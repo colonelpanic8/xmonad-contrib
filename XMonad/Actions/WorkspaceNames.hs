@@ -27,6 +27,7 @@ module XMonad.Actions.WorkspaceNames (
     getWorkspaceNames',
     getWorkspaceNames,
     getWorkspaceName,
+    getWorkspaceNameFromTag,
     getCurrentWorkspaceName,
     setWorkspaceName,
     setCurrentWorkspaceName,
@@ -42,7 +43,7 @@ module XMonad.Actions.WorkspaceNames (
     -- EWMH suport
     ewmhWorkspaceNamesLogHook,
     ewmhWorkspaceNamesLogHook',
-    ewmhWorkspaceNames
+    ewmhWorkspaceNames,
     ) where
 
 import XMonad
@@ -107,9 +108,10 @@ getWorkspaceNames' = do
 -- | Returns a function that maps workspace tag @\"t\"@ to @\"t:name\"@ for
 -- workspaces with a name, and to @\"t\"@ otherwise.
 getWorkspaceNames :: X (WorkspaceId -> String)
-getWorkspaceNames = do
-    lookup <- getWorkspaceNames'
-    return $ \wks -> wks ++ maybe "" (':' :) (lookup wks)
+getWorkspaceNames = getWorkspaceNameFromTag <$> getWorkspaceNames'
+
+getWorkspaceNameFromTag :: (WorkspaceId -> Maybe String) -> WorkspaceId -> String
+getWorkspaceNameFromTag lookup wks = wks ++ maybe "" (':' :) (lookup wks)
 
 -- | Gets the name of a workspace, if set, otherwise returns nothing.
 getWorkspaceName :: WorkspaceId -> X (Maybe String)
@@ -192,10 +194,6 @@ workspaceNamePrompt conf job = do
                                 Just i -> i
         contains completions input =
           return $ filter (Data.List.isInfixOf input) completions
-
-getWorkspaceNameFromTag :: (WorkspaceId -> Maybe String) -> WorkspaceId -> String
-getWorkspaceNameFromTag getWSName tag =
-  printf "%s: %s " tag (fromMaybe "(Empty)" (getWSName tag))
 
 setTag :: (WorkspaceId -> WorkspaceId) -> WindowSpace -> WindowSpace
 setTag remap ws = ws { W.tag = remap $ W.tag ws }
