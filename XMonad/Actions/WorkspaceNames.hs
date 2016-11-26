@@ -37,7 +37,12 @@ module XMonad.Actions.WorkspaceNames (
     swapWithCurrent,
 
     -- * Workspace prompt
-    workspaceNamePrompt
+    workspaceNamePrompt,
+
+    -- EWMH suport
+    ewmhWorkspaceNamesLogHook,
+    ewmhWorkspaceNamesLogHook',
+    ewmhWorkspaceNames
     ) where
 
 import XMonad
@@ -47,6 +52,7 @@ import qualified XMonad.Util.ExtensibleState as XS
 import XMonad.Actions.CycleWS (findWorkspace, WSType(..), Direction1D(..))
 import qualified XMonad.Actions.SwapWorkspaces as Swap
 import XMonad.Hooks.DynamicLog (PP(..))
+import XMonad.Hooks.EwmhDesktops
 import XMonad.Prompt (mkXPrompt, XPConfig)
 import XMonad.Prompt.Workspace (Wor(Wor))
 import XMonad.Util.WorkspaceCompare (getSortByIndex)
@@ -54,6 +60,7 @@ import XMonad.Util.WorkspaceCompare (getSortByIndex)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Data.List (isInfixOf)
+import Text.Printf
 
 -- $usage
 -- You can use this module with the following in your @~\/.xmonad\/xmonad.hs@ file:
@@ -185,3 +192,25 @@ workspaceNamePrompt conf job = do
                                 Just i -> i
         contains completions input =
           return $ filter (Data.List.isInfixOf input) completions
+
+getWorkspaceNameFromTag :: (WorkspaceId -> Maybe String) -> WorkspaceId -> String
+getWorkspaceNameFromTag getWSName tag =
+  printf "%s: %s " tag (fromMaybe "(Empty)" (getWSName tag))
+
+setTag :: (WorkspaceId -> WorkspaceId) -> WindowSpace -> WindowSpace
+setTag remap ws = ws { W.tag = remap $ W.tag ws }
+
+ewmhWorkspaceNamesLogHook' :: ((WorkspaceId -> Maybe String) -> WorkspaceId -> String)
+                           -> X ()
+ewmhWorkspaceNamesLogHook' nameWorkspace =
+  map . setTag . nameWorkspace <$> getWorkspaceNames' >>=
+      ewmhDesktopsLogHookCustom
+
+ewmhWorkspaceNamesLogHook = ewmhWorkspaceNamesLogHook' getWorkspaceNameFromTag
+
+ewmhWorkspaceNames :: XConfig a -> XConfig a
+ewmhWorkspaceNames c = c { startupHook     = startupHook c +++ ewmhDesktopsStartup
+                         , handleEventHook = handleEventHook c +++ ewmhDesktopsEventHook
+                         , logHook         = logHook c +++ ewmhWorkspaceNamesLogHook
+                         }
+  where x +++ y = mappend y x
