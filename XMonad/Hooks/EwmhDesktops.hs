@@ -25,6 +25,7 @@ module XMonad.Hooks.EwmhDesktops (
     ) where
 
 import Codec.Binary.UTF8.String (encode)
+import Control.Applicative((<$>))
 import Data.List
 import Data.Maybe
 import Data.Monoid
