@@ -246,7 +246,7 @@ instance Message SetStruts
 instance LayoutModifier AvoidStruts a where
     modifyLayout (AvoidStruts ss) w r = do
         srect <- fmap ($ r) (calcGap ss)
-        setWorkarea srect
+        -- setWorkarea srect
         runLayout w srect
 
     pureMess as@(AvoidStruts ss) m
