@@ -62,7 +62,6 @@ import Control.Applicative((<$>))
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Data.List (isInfixOf)
-import Text.Printf
 
 -- $usage
 -- You can use this module with the following in your @~\/.xmonad\/xmonad.hs@ file:
@@ -112,7 +111,7 @@ getWorkspaceNames :: X (WorkspaceId -> String)
 getWorkspaceNames = getWorkspaceNameFromTag <$> getWorkspaceNames'
 
 getWorkspaceNameFromTag :: (WorkspaceId -> Maybe String) -> WorkspaceId -> String
-getWorkspaceNameFromTag lookup wks = wks ++ maybe "" (':' :) (lookup wks)
+getWorkspaceNameFromTag l wks = wks ++ maybe "" (':' :) (l wks)
 
 -- | Gets the name of a workspace, if set, otherwise returns nothing.
 getWorkspaceName :: WorkspaceId -> X (Maybe String)
@@ -200,16 +199,16 @@ setTag :: (WorkspaceId -> WorkspaceId) -> WindowSpace -> WindowSpace
 setTag remap ws = ws { W.tag = remap $ W.tag ws }
 
 ewmhWorkspaceNamesLogHook' :: ((WorkspaceId -> Maybe String) -> WorkspaceId -> String)
-                           -> X ()
+                           -> X ([WindowSpace] -> [WindowSpace])
 ewmhWorkspaceNamesLogHook' nameWorkspace =
-  map . setTag . nameWorkspace <$> getWorkspaceNames' >>=
-      ewmhDesktopsLogHookCustom
+  map . setTag . nameWorkspace <$> getWorkspaceNames'
 
+ewmhWorkspaceNamesLogHook :: X ([WindowSpace] -> [WindowSpace])
 ewmhWorkspaceNamesLogHook = ewmhWorkspaceNamesLogHook' getWorkspaceNameFromTag
 
 ewmhWorkspaceNames :: XConfig a -> XConfig a
-ewmhWorkspaceNames c = c { startupHook     = startupHook c +++ ewmhDesktopsStartup
-                         , handleEventHook = handleEventHook c +++ ewmhDesktopsEventHook
-                         , logHook         = logHook c +++ ewmhWorkspaceNamesLogHook
-                         }
+ewmhWorkspaceNames c = (ewmh c)
+                       { logHook = logHook c +++
+                                   (ewmhWorkspaceNamesLogHook >>= ewmhDesktopsLogHookCustom)
+                       }
   where x +++ y = mappend y x
