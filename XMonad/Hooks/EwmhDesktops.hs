@@ -21,12 +21,7 @@ module XMonad.Hooks.EwmhDesktops (
     ewmhDesktopsLogHookCustom,
     ewmhDesktopsEventHook,
     ewmhDesktopsEventHookCustom,
-    fullscreenEventHook,
-
-    -- Workspace Names Support
-    ewmhWorkspaceNamesLogHook,
-    ewmhWorkspaceNamesLogHook',
-    ewmhWorkspaceNames,
+    fullscreenEventHook
     ) where
 
 import Codec.Binary.UTF8.String (encode)
@@ -43,7 +38,6 @@ import XMonad.Hooks.SetWMName
 import XMonad.Util.XUtils (fi)
 import XMonad.Util.WorkspaceCompare
 import XMonad.Util.WindowProperties (getProp32)
-import XMonad.Actions.WorkspaceNames
 
 -- $usage
 -- You can use this module with the following in your @~\/.xmonad\/xmonad.hs@:
@@ -263,18 +257,3 @@ setActiveWindow = withWindowSet $ \s -> withDisplay $ \dpy -> do
     a <- getAtom "_NET_ACTIVE_WINDOW"
     c <- getAtom "WINDOW"
     io $ changeProperty32 dpy r a c propModeReplace [fromIntegral w]
-
-ewmhWorkspaceNamesLogHook' :: ((WorkspaceId -> Maybe String) -> WorkspaceId -> String)
-                           -> X ([WindowSpace] -> [WindowSpace])
-ewmhWorkspaceNamesLogHook' nameWorkspace =
-  map . setTag . nameWorkspace <$> getWorkspaceNames'
-
-ewmhWorkspaceNamesLogHook :: X ([WindowSpace] -> [WindowSpace])
-ewmhWorkspaceNamesLogHook = ewmhWorkspaceNamesLogHook' getWorkspaceNameFromTag
-
-ewmhWorkspaceNames :: XConfig a -> XConfig a
-ewmhWorkspaceNames c = (ewmh c)
-                       { logHook = logHook c +++
-                                   (ewmhWorkspaceNamesLogHook >>= ewmhDesktopsLogHookCustom)
-                       }
-  where x +++ y = mappend y x
