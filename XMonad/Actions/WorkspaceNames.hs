@@ -39,6 +39,11 @@ module XMonad.Actions.WorkspaceNames (
 
     -- * Workspace prompt
     workspaceNamePrompt,
+
+    -- EWMH suport
+    ewmhWorkspaceNamesLogHook,
+    ewmhWorkspaceNamesLogHook',
+    ewmhWorkspaceNames,
     ) where
 
 import XMonad
@@ -192,3 +197,18 @@ workspaceNamePrompt conf job = do
 
 setTag :: (WorkspaceId -> WorkspaceId) -> WindowSpace -> WindowSpace
 setTag remap ws = ws { W.tag = remap $ W.tag ws }
+
+ewmhWorkspaceNamesLogHook' :: ((WorkspaceId -> Maybe String) -> WorkspaceId -> String)
+                           -> X ([WindowSpace] -> [WindowSpace])
+ewmhWorkspaceNamesLogHook' nameWorkspace =
+  map . setTag . nameWorkspace <$> getWorkspaceNames'
+
+ewmhWorkspaceNamesLogHook :: X ([WindowSpace] -> [WindowSpace])
+ewmhWorkspaceNamesLogHook = ewmhWorkspaceNamesLogHook' getWorkspaceNameFromTag
+
+ewmhWorkspaceNames :: XConfig a -> XConfig a
+ewmhWorkspaceNames c = (ewmh c)
+                       { logHook = logHook c +++
+                                   (ewmhWorkspaceNamesLogHook >>= ewmhDesktopsLogHookCustom)
+                       }
+  where x +++ y = mappend y x
