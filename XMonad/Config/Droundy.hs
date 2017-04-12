@@ -33,7 +33,6 @@ import XMonad.Layout.ShowWName ( showWName )
 import XMonad.Layout.Magnifier ( maximizeVertical, MagnifyMsg(Toggle) )
 
 import XMonad.Prompt ( font, height, XPConfig )
-import XMonad.Prompt.Layout ( layoutPrompt )
 import XMonad.Prompt.Shell ( shellPrompt )
 
 import XMonad.Actions.CopyWindow ( kill1, copy )
@@ -106,7 +105,6 @@ keys x = M.fromList $
     , ((modMask x, xK_m     ), withWorkspace myXPConfig (windows . W.shift))
     , ((modMask x .|. shiftMask, xK_m     ), withWorkspace myXPConfig (windows . copy))
     , ((modMask x .|. shiftMask, xK_r), renameWorkspace myXPConfig)
-    , ((modMask x, xK_l ), layoutPrompt myXPConfig)
     , ((modMask x .|. controlMask, xK_space), sendMessage ToggleLayout)
     , ((modMask x, xK_space), sendMessage Toggle)
 
