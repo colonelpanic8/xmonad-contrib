@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification, FlexibleInstances, MultiParamTypeClasses, RankNTypes, AllowAmbiguousTypes, KindSignatures, FlexibleContexts #-}
+{-# LANGUAGE ExistentialQuantification, FlexibleInstances, MultiParamTypeClasses, RankNTypes, AllowAmbiguousTypes, FlexibleContexts #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  XMonad.Prompt.Layout
@@ -22,22 +22,24 @@ module XMonad.Prompt.Layout
   , (|||!)
   ) where
 
-import           XMonad.Core (LayoutClass(..), X, Layout(..))
+import           XMonad.Core (LayoutClass(..), X)
 import           XMonad.Layout.LayoutCombinators
 import           XMonad.Operations
 import           XMonad.Prompt
 import           XMonad.Prompt.Workspace
 import qualified XMonad.Util.Dmenu as DM
 
+data Layout a = forall l. (LayoutClass l a, Read (l a)) => Layout (l a)
+
 data LayoutInfo a = forall l. (LayoutClass l a, Read (l a)) =>
-  LayoutInfo { hook :: l a
+  LayoutInfo { theHook :: l a
              , layouts :: [Layout a]
              }
 
-layoutNames :: LayoutClass Layout a => LayoutInfo a -> [String]
-layoutNames info = [description layout | layout <- layouts info]
+layoutNames :: LayoutInfo a -> [String]
+layoutNames info = [description layout | Layout layout <- layouts info]
 
-layoutPrompt :: LayoutClass Layout a => XPConfig -> LayoutInfo a -> X ()
+layoutPrompt :: XPConfig -> LayoutInfo a -> X ()
 layoutPrompt c info =
   mkXPrompt
     (Wor "")
@@ -45,7 +47,7 @@ layoutPrompt c info =
     (mkComplFunFromList' (layoutNames info))
     (sendMessage . JumpToLayout)
 
-selectLayoutDmenu :: LayoutClass Layout a => LayoutInfo a -> X String
+selectLayoutDmenu :: LayoutInfo a -> X String
 selectLayoutDmenu info =
   DM.menuArgs "rofi" ["-dmenu", "-i"] $ layoutNames info
 
@@ -61,27 +63,27 @@ class InfoJoinable l1 l2 a where
 
 instance InfoJoinable LayoutInfo LayoutInfo a where
   joinLayouts (LayoutCombinator op)
-              LayoutInfo {hook = h1, layouts = l1}
-              LayoutInfo {hook = h2, layouts = l2} =
+              LayoutInfo {theHook = h1, layouts = l1}
+              LayoutInfo {theHook = h2, layouts = l2} =
                 case h1 `op` h2 of
-                  Layout l -> LayoutInfo {hook = l, layouts = l1 ++ l2}
+                  Layout l -> LayoutInfo {theHook = l, layouts = l1 ++ l2}
 
 instance (LayoutClass l a, Read (l a)) =>
          InfoJoinable LayoutInfo l a where
-  joinLayouts (LayoutCombinator op) LayoutInfo { hook = theHook
+  joinLayouts (LayoutCombinator op) LayoutInfo { theHook = h
                                                , layouts = theLayouts
                                                } newLayout =
-    case theHook `op` newLayout of
-      Layout l -> LayoutInfo { hook = l
+    case h `op` newLayout of
+      Layout l -> LayoutInfo { theHook = l
                              , layouts = theLayouts ++ [Layout newLayout]
                              }
 
 instance (LayoutClass l a, Read (l a)) =>
          InfoJoinable l LayoutInfo a where
   joinLayouts (LayoutCombinator op) newLayout
-              LayoutInfo { hook = theHook , layouts = theLayouts} =
-    case theHook `op` newLayout of
-      Layout l -> LayoutInfo { hook = l
+              LayoutInfo { theHook = h , layouts = theLayouts} =
+    case h `op` newLayout of
+      Layout l -> LayoutInfo { theHook = l
                              , layouts = theLayouts ++ [Layout newLayout]
                              }
 
@@ -89,10 +91,7 @@ instance (LayoutClass l a, Read (l a), LayoutClass l2 a, Read (l2 a)) =>
          InfoJoinable l l2 a where
   joinLayouts (LayoutCombinator op) l1 l2 =
     case l1 `op` l2 of
-      Layout l -> LayoutInfo {hook = l, layouts = [Layout l1, Layout l2]}
+      Layout l -> LayoutInfo {theHook = l, layouts = [Layout l1, Layout l2]}
 
-(|||!)
-  :: forall (l1 :: * -> *) (l2 :: * -> *) a.
-     InfoJoinable l1 l2 a
-  => l1 a -> l2 a -> LayoutInfo a
+(|||!) :: (InfoJoinable l1 l2 a) => l1 a -> l2 a -> LayoutInfo a
 l1 |||! l2 = joinLayouts (LayoutCombinator (\a b -> Layout (a ||| b))) l1 l2
