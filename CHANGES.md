@@ -1,15 +1,97 @@
 # Change Log / Release Notes
 
-## 0.13
+## 0.14 (Not Yet)
+
+### Breaking Changes
+
+  * `XMonad.Actions.GridSelect`
+
+    - Added field `gs_bordercolor` to `GSConfig` to specify border color.
+
+  * `ewmh` function from `X.H.EwmhDesktops` will use `manageHook` for handling
+    activated window. That means, actions, which you don't want to happen on
+    activated windows, should be guarded by
+
+        not <$> activated
+
+    predicate. By default, with empty `ManageHook`, window activation will do
+    nothing.
+
+    Also, you can use regular 'ManageHook' combinators for changing window
+    activation behavior.
+
+### New Modules
+
+  * `XMonad.Hooks.Focus`
+
+    A new module extending ManageHook EDSL to work on focused windows and
+    current workspace.
+
+    This module will enable window activation (`_NET_ACTIVE_WINDOW`) and apply
+    `manageHook` to activated window too. Thus, it may lead to unexpected
+    results, when `manageHook` previously working only for new windows, start
+    working for activated windows too. It may be solved, by adding
+    `not <$> activated` before those part of `manageHook`, which should not be
+    called for activated windows.  But this lifts `manageHook` into
+    `FocusHook` and it needs to be converted back later using `manageFocus`.
+
+### Bug Fixes and Minor Changes
+
+  * `XMonad.Actions.GridSelect`
+
+    - The vertical centring of text in each cell has been improved.
+
+  * `XMonad.Actions.SpawnOn`
+
+    - Bind windows spawns by child processes of the original window to the same
+      workspace as the original window.
+
+  * `XMonad.Util.WindowProperties`
+
+    - Added the ability to test if a window has a tag from
+      `XMonad.Actions.TagWindows`
+
+  * `XMonad.Layout.Magnifier`
+
+    - Handle `IncMasterN` messages.
+
+  * `XMonad.Util.EZConfig`
+
+    - Can now parse Latin1 keys, to better accommodate users with
+      non-US keyboards.
+
+  * `XMonad.Actions.Submap`
+
+    Establish pointer grab to avoid freezing X, when button press occurs after
+    submap key press.  And terminate submap at button press in the same way,
+    as we do for wrong key press.
+
+  * `XMonad.Hooks.SetWMName`
+
+    Add function `getWMName`.
+
+  * `XMonad.Hooks.ManageHelpers`
+
+    Make type of ManageHook combinators more general.
+    
+  * `XMonad.Prompt.Window`
+
+    - New function: `windowMultiPrompt` for using `mkXPromptWithModes`
+      with window prompts.
+
+## 0.13 (February 10, 2017)
 
 ### Breaking Changes
 
   * The type of `completionKey` (of `XPConfig` record) has been
     changed from `KeySym` to `(KeyMask, KeySym)`. The default value
-    for this is still binded to `Tab` key.
+    for this is still bound to the `Tab` key.
 
   * New constructor `CenteredAt Rational Rational` added for
     `XMonad.Prompt.XPPosition`.
+
+  * `XMonad.Prompt` now stores its history file in the XMonad cache
+    directory in a file named `prompt-history`.
 
 ### New Modules
 
@@ -42,12 +124,28 @@
     EWMH taskbars and pagers. Useful for `NamedScratchpad` windows, since
     you will usually be taken to the `NSP` workspace by them.
 
-### Minor Changes
+### Bug Fixes and Minor Changes
+
+  * `XMonad.Hooks.ManageDocks`,
+
+    - Fix a very annoying bug where taskbars/docs would be
+      covered by windows.
+
+    - Also fix a bug that caused certain Gtk and Qt application to
+      have issues displaying menus and popups.
 
   * `XMonad.Layout.LayoutBuilder`
 
     Merge all functionality from `XMonad.Layout.LayoutBuilderP` into
     `XMonad.Layout.LayoutBuilder`.
+
+  * `XMonad.Actions.WindowGo`
+
+    - Fix `raiseNextMaybe` cycling between 2 workspaces only.
+
+  * `XMonad.Actions.UpdatePointer`
+
+    - Fix bug when cursor gets stuck in one of the corners.
 
   * `XMonad.Actions.DynamicProjects`
 
@@ -57,10 +155,14 @@
       The project itself was already being deleted, this just deletes
       the workspace created for it as well.
 
+    - Added function to change the working directory (`changeProjectDirPrompt`)
+
+    - All of the prompts are now multiple mode prompts.  Try using the
+      `changeModeKey` in a prompt and see what happens!
+
   * `XMonad.Actions.WorkspaceNames` and `XMonad.Hooks.EwmhDesktops`
 
     Support for workspace names was added to the EwmhDesktops module.
-
 ## 0.12 (December 14, 2015)
 
 ### Breaking Changes
