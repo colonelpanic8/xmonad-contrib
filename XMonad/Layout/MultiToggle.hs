@@ -235,9 +235,11 @@ data ToggleQuery a = forall t. (Transformer t a) => ToggleQuery t
 
 instance (Typeable a) => Message (ToggleQuery a)
 
-isToggleActive :: Transformer t Window => t -> X (Maybe Bool)
-isToggleActive t = do
+isToggleActive
+  :: Transformer t Window
+  => t -> Workspace WorkspaceId (Layout Window) Window -> X (Maybe Bool)
+isToggleActive t w = do
   XS.put $ ToggleQueryResult Nothing
-  sendMessage $ ToggleQuery t
+  sendMessageWithNoRefresh (ToggleQuery t) w
   ToggleQueryResult res <- XS.get
   return res
