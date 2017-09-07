@@ -226,6 +226,9 @@
     - All of the prompts are now multiple mode prompts.  Try using the
       `changeModeKey` in a prompt and see what happens!
 
+  * `XMonad.Actions.WorkspaceNames` and `XMonad.Hooks.EwmhDesktops`
+
+    Support for workspace names was added to the EwmhDesktops module.
 ## 0.12 (December 14, 2015)
 
 ### Breaking Changes
