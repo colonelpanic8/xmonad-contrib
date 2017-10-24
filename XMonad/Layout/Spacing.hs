@@ -113,8 +113,6 @@ instance LayoutModifier SmartSpacing a where
      | Just (ModifySpacing f) <- fromMessage m = Just $ SmartSpacing $ max 0 $ f px
      | otherwise = Nothing
 
-    modifierDescription (SmartSpacing p) = "SmartSpacing " ++ show p
-
 -- | Surrounds all windows with blank space, and adds the same amount of spacing
 -- around the edge of the screen, except when the window is the only visible
 -- window on the current workspace.

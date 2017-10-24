@@ -57,7 +57,6 @@ minimize = ModifiedLayout Minimize
 
 
 instance LayoutModifier Minimize Window where
-    modifierDescription _ = "Minimize"
 
     modifyLayout Minimize wksp rect = do
         minimized <- XS.gets minimizedStack
