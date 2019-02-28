@@ -4,7 +4,29 @@
 
 ### Breaking Changes
 
+  * `XMonad.Prompt`
+
+    - Prompt ships a vim-like keymap, see `vimLikeXPKeymap` and
+      `vimLikeXPKeymap'`. A reworked event loop supports new vim-like prompt
+      actions.
+    - Prompt supports dynamic colors. Colors are now specified by the `XPColor`
+      type in `XPState` while `XPConfig` colors remain unchanged for backwards
+      compatibility.
+    - Fixes `showCompletionOnTab`.
+    - The behavior of `moveWord` and `moveWord'` has changed; brought in line
+      with the documentation and now internally consistent. The old keymaps
+      retain the original behavior; see the documentation to do the same your
+      XMonad configuration.
+
 ### New Modules
+
+  * `XMonad.Layout.TwoPanePersistent`
+
+    A layout that is like TwoPane but keeps track of the slave window that is
+    currently beside the master. In TwoPane, the default behavior when the master
+    is focused is to display the next window in the stack on the slave pane. This
+    is a problem when a different slave window is selected without changing the stack
+    order.
 
 ### Bug Fixes and Minor Changes
 
@@ -12,6 +34,29 @@
 
     Added `sorter` to `XPConfig` used to sort the possible completions by how
     well they match the search string (example: `XMonad.Prompt.FuzzyMatch`).
+
+    Fixes a potential bug where an error during prompt execution would
+    leave the window open and keep the keyboard grabbed. See issue
+    [#180](https://github.com/xmonad/xmonad-contrib/issues/180).
+
+    Fixes [issue #217](https://github.com/xmonad/xmonad-contrib/issues/217), where
+    using tab to wrap around the completion rows would fail when maxComplRows is
+    restricting the number of rows of output.
+
+  * `XMonad.Actions.DynamicProjects`
+
+    Make the input directory read from the prompt in `DynamicProjects`
+    absolute wrt the current directory.
+
+    Before this, the directory set by the prompt was treated like a relative
+    directory. This means that when you switch from a project with directory
+    `foo` into a project with directory `bar`, xmonad actually tries to `cd`
+    into `foo/bar`, instead of `~/bar` as expected.
+
+  * `XMonad.Actions.DynamicWorkspaceOrder`
+    Add a version of `withNthWorkspace` that takes a `[WorkspaceId] ->
+	[WorkspaceId]` transformation to apply over the list of workspace tags
+	resulting from the dynamic order.
 
 ## 0.15
 
@@ -360,6 +405,8 @@
 
     - New function `passTypePrompt` which uses `xdotool` to type in a password
       from the store, bypassing the clipboard.
+    - New function `passEditPrompt` for editing a password from the
+      store.
     - Now handles password labels with spaces and special characters inside
       them.
 
