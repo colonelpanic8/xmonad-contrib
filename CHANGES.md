@@ -28,6 +28,13 @@
     is a problem when a different slave window is selected without changing the stack
     order.
 
+  * `XMonad.Util.ExclusiveScratchpads`
+
+    Named scratchpads that can be mutually exclusive: This new module extends the
+    idea of named scratchpads such that you can define "families of scratchpads"
+    that are exclusive on the same screen. It also allows to remove this
+    constraint of being mutually exclusive with another scratchpad.
+
 ### Bug Fixes and Minor Changes
 
   * `XMonad.Prompt`
@@ -54,9 +61,16 @@
     into `foo/bar`, instead of `~/bar` as expected.
 
   * `XMonad.Actions.DynamicWorkspaceOrder`
+
     Add a version of `withNthWorkspace` that takes a `[WorkspaceId] ->
-	[WorkspaceId]` transformation to apply over the list of workspace tags
-	resulting from the dynamic order.
+    [WorkspaceId]` transformation to apply over the list of workspace tags
+    resulting from the dynamic order.
+
+  * `XMonad.Actions.GroupNavigation`
+
+    Add a utility function `isOnAnyVisibleWS :: Query Bool` to allow easy
+    cycling between all windows on all visible workspaces.
+
 
 ## 0.15
 
