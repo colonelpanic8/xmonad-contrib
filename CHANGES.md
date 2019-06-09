@@ -50,6 +50,12 @@
     using tab to wrap around the completion rows would fail when maxComplRows is
     restricting the number of rows of output.
 
+  * `XMonad.Prompt.Pass`
+
+    Added 'passOTPPrompt' to support getting OTP type password. This require
+    pass-otp (https://github.com/tadfisher/pass-otp) has been setup in the running
+    machine.
+
   * `XMonad.Actions.DynamicProjects`
 
     Make the input directory read from the prompt in `DynamicProjects`
@@ -70,6 +76,18 @@
 
     Add a utility function `isOnAnyVisibleWS :: Query Bool` to allow easy
     cycling between all windows on all visible workspaces.
+
+
+  * `XMonad.Hooks.WallpaperSetter`
+
+    Preserve the aspect ratio of wallpapers that xmonad sets. When previous
+    versions would distort images to fit the screen size, it will now find a
+    best fit by cropping instead.
+
+  * `XMonad.Util.Themes`
+
+    Add adwaitaTheme and adwaitaDarkTheme to match their respective
+    GTK themes.
 
 
 ## 0.15
@@ -233,6 +251,12 @@
 
     Provides a simple transformer for use with `XMonad.Layout.MultiToggle` to
     dynamically toggle `XMonad.Layout.TabBarDecoration`.
+
+  * `XMonad.Hooks.RefocusLast`
+
+    Provides hooks and actions that keep track of recently focused windows on a
+    per workspace basis and automatically refocus the last window on loss of the
+    current (if appropriate as determined by user specified criteria).
 
   * `XMonad.Layout.StateFull`
 
