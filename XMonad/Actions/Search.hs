@@ -18,6 +18,7 @@ module XMonad.Actions.Search (   -- * Usage
                                  searchEngineF,
                                  promptSearch,
                                  promptSearchBrowser,
+                                 promptSearchBrowser',
                                  selectSearch,
                                  selectSearchBrowser,
                                  isPrefixOf,
@@ -191,7 +192,7 @@ Or in combination with XMonad.Util.EZConfig:
 >
 > searchList :: [(String, S.SearchEngine)]
 > searchList = [ ("g", S.google)
->              , ("h", S.hoohle)
+>              , ("h", S.hoogle)
 >              , ("w", S.wikipedia)
 >              ]
 
@@ -293,7 +294,7 @@ debpts        = searchEngine "debpts"        "http://packages.qa.debian.org/"
 dictionary    = searchEngine "dict"          "http://dictionary.reference.com/browse/"
 google        = searchEngine "google"        "http://www.google.com/search?num=100&q="
 hackage       = searchEngine "hackage"       "http://hackage.haskell.org/package/"
-hoogle        = searchEngine "hoogle"        "http://www.haskell.org/hoogle/?q="
+hoogle        = searchEngine "hoogle"        "http://hoogle.haskell.org/?hoogle="
 images        = searchEngine "images"        "http://images.google.fr/images?q="
 imdb          = searchEngine "imdb"          "http://www.imdb.com/find?s=all&q="
 isohunt       = searchEngine "isohunt"       "http://isohunt.com/torrents/?ihq="
@@ -360,6 +361,18 @@ namedEngine name (SearchEngine _ site) = searchEngineF name site
 promptSearchBrowser :: XPConfig -> Browser -> SearchEngine -> X ()
 promptSearchBrowser config browser (SearchEngine name site) =
     mkXPrompt (Search name) config (historyCompletionP ("Search [" `isPrefixOf`)) $ search browser site
+
+{- | Like 'promptSearchBrowser', but only suggest previous searches for the
+   given 'SearchEngine' in the prompt. -}
+promptSearchBrowser' :: XPConfig -> Browser -> SearchEngine -> X ()
+promptSearchBrowser' config browser (SearchEngine name site) =
+    mkXPrompt
+        (Search name)
+        config
+        (historyCompletionP (searchName `isPrefixOf`))
+        $ search browser site
+  where
+    searchName = showXPrompt (Search name)
 
 {- | Like 'search', but in this case, the string is not specified but grabbed
  from the user's response to a prompt. Example:

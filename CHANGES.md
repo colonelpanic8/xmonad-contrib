@@ -6,6 +6,73 @@
 
   * `XMonad.Prompt`
 
+    Now `mkComplFunFromList` and `mkComplFunFromList'` take an
+    additional `XPConfig` argument, so that they can take into
+    account the given `searchPredicate`.
+
+  * `XMonad.Hooks.EwmhDesktops`
+
+    It is no longer recommended to use `fullscreenEventHook` directly.
+    Instead, use `ewmhFullscreen` which additionally advertises fullscreen
+    support in `_NET_SUPPORTED` and fixes fullscreening of applications that
+    explicitly check it, e.g. mupdf-gl, sxiv, …
+
+    `XMonad.Layout.Fullscreen.fullscreenSupport` now advertises it as well,
+    and no configuration changes are required in this case.
+
+### New Modules
+
+  * `XMonad.Layout.TallMastersCombo`
+
+    A layout combinator that support Shrink, Expand, and IncMasterN just as
+    the 'Tall' layout, and also support operations of two master windows:
+    a main master, which is the original master window;
+    a sub master, the first window of the second pane.
+    This combinator can be nested, and has a good support for using
+    'XMonad.Layout.Tabbed' as a sublayout.
+
+  * `XMonad.Actions.PerWindowKeys`
+
+    Create actions that run on a `Query Bool`, usually associated with
+    conditions on a window, basis. Useful for creating bindings that are
+    excluded or exclusive for some windows.
+
+### Bug Fixes and Minor Changes
+
+  * `XMonad.Prompt.Window`
+
+    Added 'allApplications' function which maps application executable
+    names to it's underlying window.
+
+  * `XMonad.Prompt.WindowBringer`
+
+    Added 'windowApMap' function which maps application executable
+    names to it's underlying window.
+
+  * `XMonad.Actions.Search`
+
+    - The `hoogle` function now uses the new URL `hoogle.haskell.org`.
+    - Added `promptSearchBrowser'` function to only suggest previous searches of
+      the selected search engine (instead of all search engines).
+
+  * `XMonad.Layout.BoringWindows`
+  
+    Added 'markBoringEverywhere' function, to mark the currently
+    focused window boring on all layouts, when using 'XMonad.Actions.CopyWindow'.
+
+  * `XMonad.Layout.MouseResizableTile`
+
+    When we calculate dragger widths, we first try to get the border width of
+    the focused window, before failing over to using the initial `borderWidth`.
+
+## 0.16
+
+### Breaking Changes
+
+  * `XMonad.Layout.Decoration`
+    - Added `Theme` record fields for controlling decoration border width for active/inactive/urgent windows.
+  * `XMonad.Prompt`
+
     - Prompt ships a vim-like keymap, see `vimLikeXPKeymap` and
       `vimLikeXPKeymap'`. A reworked event loop supports new vim-like prompt
       actions.
@@ -17,6 +84,8 @@
       with the documentation and now internally consistent. The old keymaps
       retain the original behavior; see the documentation to do the same your
       XMonad configuration.
+  * `XMonad.Util.Invisble`
+    - Requires `MonadFail` for `Read` instance
 
 ### New Modules
 
@@ -37,6 +106,10 @@
 
 ### Bug Fixes and Minor Changes
 
+  * `XMonad.Layout.Tabbed`
+
+    tabbedLeft and tabbedRight will set their tabs' height and width according to decoHeight/decoWidth
+
   * `XMonad.Prompt`
 
     Added `sorter` to `XPConfig` used to sort the possible completions by how
@@ -55,6 +128,13 @@
     Added 'passOTPPrompt' to support getting OTP type password. This require
     pass-otp (https://github.com/tadfisher/pass-otp) has been setup in the running
     machine.
+
+    Added 'passGenerateAndCopyPrompt', which both generates a new password and
+    copies it to the clipboard.  These two actions are commonly desirable to
+    take together, e.g. when establishing a new account.
+
+    Made password prompts traverse symlinks when gathering password names for
+    autocomplete.
 
   * `XMonad.Actions.DynamicProjects`
 
@@ -94,6 +174,14 @@
 	Provide a version of the minimize layout modifier that does not modify the
     layout name.
 
+  * 'XMonad.Layout.BinarySpacePartition'
+
+    Add a new `SplitShiftDirectional` message that allows moving windows by
+    splitting its neighbours.
+
+  * `XMonad.Prompt.FuzzyMatch`
+
+    Make fuzzy sort show shorter strings first.
 
 ## 0.15
 

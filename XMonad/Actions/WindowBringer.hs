@@ -21,17 +21,16 @@ module XMonad.Actions.WindowBringer (
                     WindowBringerConfig(..),
                     gotoMenu, gotoMenuConfig, gotoMenu', gotoMenuArgs, gotoMenuArgs',
                     bringMenu, bringMenuConfig, bringMenu', bringMenuArgs, bringMenuArgs',
-                    windowMap, windowMap', bringWindow, actionMenu
+                    windowMap, windowAppMap, windowMap', bringWindow, actionMenu
                    ) where
 
-import Control.Applicative((<$>))
 import qualified Data.Map as M
 
 import qualified XMonad.StackSet as W
 import XMonad
 import qualified XMonad as X
 import XMonad.Util.Dmenu (menuMapArgs)
-import XMonad.Util.NamedWindows (getName)
+import XMonad.Util.NamedWindows (getName, getNameWMClass)
 
 -- $usage
 --
@@ -136,6 +135,10 @@ actionMenu c@WindowBringerConfig{ menuCommand = cmd, menuArgs = args } action =
 windowMap :: X (M.Map String Window)
 windowMap = windowMap' def
 
+-- | A map from application executable names to Windows.
+windowAppMap :: X (M.Map String Window)
+windowAppMap = windowMap' decorateAppName
+
 -- | A map from window names to Windows, given a windowTitler function.
 windowMap' :: WindowBringerConfig -> X (M.Map String Window)
 windowMap' WindowBringerConfig{ windowTitler = titler, windowFilter = include } =
@@ -152,4 +155,12 @@ windowMap' WindowBringerConfig{ windowTitler = titler, windowFilter = include } 
 decorateName :: X.WindowSpace -> Window -> X String
 decorateName ws w = do
   name <- show <$> getName w
+  return $ name ++ " [" ++ W.tag ws ++ "]"
+
+-- | Returns the window name as will be listed in dmenu.  This will
+-- return the executable name of the window along with it's workspace
+-- ID.
+decorateAppName :: X.WindowSpace -> Window -> X String
+decorateAppName ws w = do
+  name <- show <$> getNameWMClass w
   return $ name ++ " [" ++ W.tag ws ++ "]"

@@ -115,12 +115,11 @@ getWorkspaceNameFromTag l wks = wks ++ maybe "" (':' :) (l wks)
 
 -- | Gets the name of a workspace, if set, otherwise returns nothing.
 getWorkspaceName :: WorkspaceId -> X (Maybe String)
-getWorkspaceName w = ($ w) `fmap` getWorkspaceNames'
+getWorkspaceName w = ($ w) <$> getWorkspaceNames'
 
 -- | Gets the name of the current workspace. See 'getWorkspaceName'
 getCurrentWorkspaceName :: X (Maybe String)
-getCurrentWorkspaceName = do
-    getWorkspaceName =<< gets (W.currentTag . windowset)
+getCurrentWorkspaceName = getWorkspaceName =<< gets (W.currentTag . windowset)
 
 -- | Sets the name of a workspace. Empty string makes the workspace unnamed
 -- again.
@@ -138,7 +137,7 @@ setCurrentWorkspaceName name = do
 
 -- | Prompt for a new name for the current workspace and set it.
 renameWorkspace :: XPConfig -> X ()
-renameWorkspace conf = do
+renameWorkspace conf =
     mkXPrompt pr conf (const (return [])) setCurrentWorkspaceName
     where pr = Wor "Workspace name: "
 
