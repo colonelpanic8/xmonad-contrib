@@ -137,7 +137,7 @@ windowMap = windowMap' def
 
 -- | A map from application executable names to Windows.
 windowAppMap :: X (M.Map String Window)
-windowAppMap = windowMap' decorateAppName
+windowAppMap = windowMap' def { windowTitler = decorateAppName }
 
 -- | A map from window names to Windows, given a windowTitler function.
 windowMap' :: WindowBringerConfig -> X (M.Map String Window)
