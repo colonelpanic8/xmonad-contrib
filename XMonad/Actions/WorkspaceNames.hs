@@ -27,7 +27,6 @@ module XMonad.Actions.WorkspaceNames (
     getWorkspaceNames',
     getWorkspaceNames,
     getWorkspaceName,
-    getWorkspaceNameFromTag,
     getCurrentWorkspaceName,
     setWorkspaceName,
     setCurrentWorkspaceName,
@@ -40,10 +39,8 @@ module XMonad.Actions.WorkspaceNames (
     -- * Workspace prompt
     workspaceNamePrompt,
 
-    -- EWMH suport
-    ewmhWorkspaceNamesLogHook,
-    ewmhWorkspaceNamesLogHook',
-    ewmhWorkspaceNames,
+    -- * EwmhDesktops integration
+    workspaceNamesListTransform
     ) where
 
 import XMonad
@@ -53,12 +50,10 @@ import qualified XMonad.Util.ExtensibleState as XS
 import XMonad.Actions.CycleWS (findWorkspace, WSType(..), Direction1D(..))
 import qualified XMonad.Actions.SwapWorkspaces as Swap
 import XMonad.Hooks.DynamicLog (PP(..))
-import XMonad.Hooks.EwmhDesktops
 import XMonad.Prompt (mkXPrompt, XPConfig)
 import XMonad.Prompt.Workspace (Wor(Wor))
 import XMonad.Util.WorkspaceCompare (getSortByIndex)
 
-import Control.Applicative((<$>))
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Data.List (isInfixOf)
@@ -108,10 +103,9 @@ getWorkspaceNames' = do
 -- | Returns a function that maps workspace tag @\"t\"@ to @\"t:name\"@ for
 -- workspaces with a name, and to @\"t\"@ otherwise.
 getWorkspaceNames :: X (WorkspaceId -> String)
-getWorkspaceNames = getWorkspaceNameFromTag <$> getWorkspaceNames'
-
-getWorkspaceNameFromTag :: (WorkspaceId -> Maybe String) -> WorkspaceId -> String
-getWorkspaceNameFromTag l wks = wks ++ maybe "" (':' :) (l wks)
+getWorkspaceNames = do
+    lookup' <- getWorkspaceNames'
+    return $ \wks -> wks ++ maybe "" (':' :) (lookup' wks)
 
 -- | Gets the name of a workspace, if set, otherwise returns nothing.
 getWorkspaceName :: WorkspaceId -> X (Maybe String)
@@ -194,20 +188,13 @@ workspaceNamePrompt conf job = do
         contains completions input =
           return $ filter (Data.List.isInfixOf input) completions
 
-setTag :: (WorkspaceId -> WorkspaceId) -> WindowSpace -> WindowSpace
-setTag remap ws = ws { W.tag = remap $ W.tag ws }
-
-ewmhWorkspaceNamesLogHook' :: ((WorkspaceId -> Maybe String) -> WorkspaceId -> String)
-                           -> X ([WindowSpace] -> [WindowSpace])
-ewmhWorkspaceNamesLogHook' nameWorkspace =
-  map . setTag . nameWorkspace <$> getWorkspaceNames'
-
-ewmhWorkspaceNamesLogHook :: X ([WindowSpace] -> [WindowSpace])
-ewmhWorkspaceNamesLogHook = ewmhWorkspaceNamesLogHook' getWorkspaceNameFromTag
-
-ewmhWorkspaceNames :: XConfig a -> XConfig a
-ewmhWorkspaceNames c = (ewmh c)
-                       { logHook = logHook c +++
-                                   (ewmhWorkspaceNamesLogHook >>= ewmhDesktopsLogHookCustom)
-                       }
-  where x +++ y = mappend y x
+-- | Workspace list transformation for
+-- 'XMonad.Hooks.EwmhDesktops.ewmhDesktopsLogHookCustom' that exposes
+-- workspace names to pagers and other EWMH-aware clients.
+--
+-- Usage:
+-- > logHook = (workspaceNamesListTransform >>= ewmhDesktopsLogHookCustom) <+> …
+workspaceNamesListTransform :: X ([WindowSpace] -> [WindowSpace])
+workspaceNamesListTransform = do
+    names <- getWorkspaceNames
+    return $ map $ \ws -> ws{ W.tag = names $ W.tag ws }

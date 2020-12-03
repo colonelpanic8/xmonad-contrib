@@ -27,6 +27,7 @@ module XMonad.Hooks.DynamicLog (
     dzenWithFlags,
     xmobar,
     statusBar,
+    statusBar',
     dynamicLog,
     dynamicLogXinerama,
 
@@ -36,15 +37,15 @@ module XMonad.Hooks.DynamicLog (
     -- * Build your own formatter
     dynamicLogWithPP,
     dynamicLogString,
-    PP(..), defaultPP, def,
+    PP(..), def,
 
     -- * Example formatters
     dzenPP, xmobarPP, sjanssenPP, byorgeyPP,
 
     -- * Formatting utilities
-    wrap, pad, trim, shorten,
-    xmobarColor, xmobarAction, xmobarRaw,
-    xmobarStrip, xmobarStripTags,
+    wrap, pad, trim, shorten, shortenLeft,
+    xmobarColor, xmobarAction, xmobarBorder,
+    xmobarRaw, xmobarStrip, xmobarStripTags,
     dzenColor, dzenEscape, dzenStrip,
 
     -- * Internal formatting functions
@@ -198,7 +199,7 @@ dzen conf = dzenWithFlags flags conf
  where
     fg      = "'#a8a3f7'" -- n.b quoting
     bg      = "'#3f3c6d'"
-    flags   = "-e 'onstart=lower' -w 400 -ta l -fg " ++ fg ++ " -bg " ++ bg
+    flags   = "-e 'onstart=lower' -dock -w 400 -ta l -fg " ++ fg ++ " -bg " ++ bg
 
 
 -- | Run xmonad with a xmobar status bar set to some nice defaults.
@@ -223,12 +224,25 @@ statusBar :: LayoutClass l Window
                        -- ^ the desired key binding to toggle bar visibility
           -> XConfig l -- ^ the base config
           -> IO (XConfig (ModifiedLayout AvoidStruts l))
-statusBar cmd pp k conf = do
+statusBar cmd pp = statusBar' cmd (return pp)
+
+-- | Like 'statusBar' with the pretty printing options embedded in the
+-- X monad. The X PP value is re-executed every time the 'logHook' runs.
+-- Useful if printing options need to be modified dynamically.
+statusBar' :: LayoutClass l Window
+           => String       -- ^ the command line to launch the status bar
+           -> X PP         -- ^ the pretty printing options
+           -> (XConfig Layout -> (KeyMask, KeySym))
+                           -- ^ the desired key binding to toggle bar visibility
+           -> XConfig l    -- ^ the base config
+           -> IO (XConfig (ModifiedLayout AvoidStruts l))
+statusBar' cmd xpp k conf = do
     h <- spawnPipe cmd
     return $ docks $ conf
         { layoutHook = avoidStruts (layoutHook conf)
         , logHook = do
                         logHook conf
+                        pp <- xpp
                         dynamicLogWithPP pp { ppOutput = hPutStrLn h }
         , keys       = liftA2 M.union keys' (keys conf)
         }
@@ -377,6 +391,14 @@ shorten n xs | length xs < n = xs
  where
     end = "..."
 
+-- | Like 'shorten', but truncate from the left instead of right.
+shortenLeft :: Int -> String -> String
+shortenLeft n xs | l < n     = xs
+                 | otherwise = end ++ (drop (l - n + length end) xs)
+ where
+    end = "..."
+    l = length xs
+
 -- | Output a list of strings, ignoring empty ones and separating the
 --   rest with the given separator.
 sepBy :: String   -- ^ separator
@@ -435,6 +457,18 @@ xmobarAction command button = wrap l r
     where
         l = "<action=`" ++ command ++ "` button=" ++ button ++ ">"
         r = "</action>"
+
+-- | Use xmobar box to add a border to an arbitrary string.
+xmobarBorder :: String -- ^ Border type. Possible values: VBoth, HBoth, Full,
+                       -- Top, Bottom, Left or Right
+             -> String -- ^ color: a color name, or #rrggbb format
+             -> Int    -- ^ width in pixels
+             -> String -- ^ output string
+             -> String
+xmobarBorder border color width = wrap prefix "</box>"
+  where
+    prefix = "<box type=" ++ border ++ " width=" ++ show width ++ " color="
+      ++ color ++ ">"
 
 -- | Encapsulate arbitrary text for display only, i.e. untrusted content if
 -- wrapped (perhaps from window titles) will be displayed only, with all tags
@@ -532,10 +566,6 @@ data PP = PP { ppCurrent :: WorkspaceId -> String
              }
 
 -- | The default pretty printing options, as seen in 'dynamicLog'.
-{-# DEPRECATED defaultPP "Use def (from Data.Default, and re-exported by XMonad.Hooks.DynamicLog) instead." #-}
-defaultPP :: PP
-defaultPP = def
-
 instance Default PP where
     def   = PP { ppCurrent         = wrap "[" "]"
                , ppVisible         = wrap "<" ">"
