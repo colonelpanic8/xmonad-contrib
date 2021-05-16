@@ -184,6 +184,9 @@ edit your key bindings.
     Provides bindings to add and delete workspaces.  Note that you may only
     delete a workspace that is already empty.
 
+* "XMonad.Actions.EasyMotion":
+    Focus a visible window using a key chord.
+
 * "XMonad.Actions.FindEmptyWorkspace":
     Find an empty workspace.
 
@@ -415,13 +418,16 @@ own configuration, possibly with some modifications.
 * "XMonad.Config.Xfce":
     This module provides a config suitable for use with the Xfce desktop environment.
 
+* "XMonad.Config.LXQt":
+    This module provides a config suitable for use with the LXQt desktop environment.
+
 -}
 
 {- $hooks
 
 In the @XMonad.Hooks@ namespace you can find modules exporting
 hooks. Hooks are actions that xmonad performs when certain events
-occur. The two most important hooks are:
+occur. The three most important hooks are:
 
 * 'XMonad.Core.manageHook': this hook is called when a new window
   xmonad must take care of is created. This is a very powerful hook,
@@ -473,10 +479,18 @@ Here is a list of the modules found in @XMonad.Hooks@:
 * "XMonad.Hooks.DynamicHooks":
     One-shot and permanent ManageHooks that can be updated at runtime.
 
+* "XMonad.Hooks.DynamicIcons":
+    Dynamically augment workspace names logged to a status bar via DynamicLog
+    based on the contents (windows) of the workspace.
+
 * "XMonad.Hooks.DynamicLog": for use with 'XMonad.Core.logHook'; send
   information about xmonad's state to standard output, suitable for
   putting in a status bar of some sort. See
   "XMonad.Doc.Extending#The_log_hook_and_external_status_bars".
+
+* "XMonad.Hooks.StatusBar.PP": originally in "XMonad.Hooks.DynamicLog",
+   this module provides the pretty-printing abstraction 'PP' and a set of
+   functions to interact with it.
 
 * "XMonad.Hooks.EwmhDesktops":
     Makes xmonad use the EWMH hints to tell panel applications about its
@@ -552,6 +566,10 @@ Here is a list of the modules found in @XMonad.Hooks@:
     Sets the WM name to a given string, so that it could be detected using
     _NET_SUPPORTING_WM_CHECK protocol.  May be useful for making Java GUI
     programs work.
+
+* "XMonad.Hooks.StatusBar":
+   This module provides a new interface that replaces "XMonad.Hooks.DynamicLog",
+   by providing composoble and dynamic status bars.
 
 * "XMonad.Hooks.ToggleHook":
     Hook and keybindings for toggling hook behavior.
@@ -1068,6 +1086,12 @@ These are the available prompts:
     * narrow completions by section number, if the one is specified
     (like @\/etc\/bash_completion@ does)
 
+* "XMonad.Prompt.OrgMode"
+    A prompt for interacting with org-mode.  It can be used to quickly
+    save TODOs, NOTEs, and the like with the additional capability to
+    schedule/deadline a task, or use the primary selection as the
+    contents of the note.
+
 * "XMonad.Prompt.Pass":
     This module provides 3 combinators for ease passwords manipulation (generate, read, remove):
     1) one to lookup passwords in the password-storage.
@@ -1152,6 +1176,10 @@ A non complete list with a brief description:
 * "XMonad.Util.Font":
     A module for abstracting a font facility over
     Core fonts and Xft.
+
+* "XMonad.Util.Hacks":
+    A collection of small fixes and utilities with possibly hacky
+    implementations and/or not deserving own modules.
 
 * "XMonad.Util.Image":
     Utilities for manipulating [[Bool]] as images.
@@ -1726,7 +1754,8 @@ specifically for logging some of the most interesting information
 about the internal state of xmonad: "XMonad.Hooks.DynamicLog".  This
 module can be used with an external status bar to print the produced
 logs in a convenient way; the most commonly used status bars are dzen
-and xmobar.
+and xmobar. The module "XMonad.Hooks.StatusBar" offers another interface
+to interact with status bars, that might be more convenient to use.
 
 By default the 'XMonad.Core.logHook' doesn't produce anything. To
 enable it you need first to import "XMonad.Hooks.DynamicLog":

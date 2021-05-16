@@ -19,11 +19,12 @@ module XMonad.Hooks.WallpaperSetter (
 , Wallpaper(..)
 , WallpaperList(..)
 , defWallpaperConf
-, defWPNames
+, defWPNamesJpg, defWPNamesPng, defWPNames
   -- *TODO
   -- $todo
 ) where
 import XMonad
+import XMonad.Prelude
 import qualified XMonad.StackSet as S
 import qualified XMonad.Util.ExtensibleState as XS
 
@@ -34,15 +35,7 @@ import System.FilePath ((</>))
 import System.Random (randomRIO)
 
 import qualified Data.Map as M
-import Data.List (intersperse, sortBy)
-import Data.Char (isAlphaNum)
 import Data.Ord (comparing)
-
-import Control.Monad
-import Control.Applicative
-import Data.Maybe
-import Data.Monoid hiding ((<>))
-import Data.Semigroup
 
 -- $usage
 -- This module requires imagemagick and feh to be installed, as these are utilized
@@ -56,7 +49,7 @@ import Data.Semigroup
 --
 -- > myWorkspaces = ["1:main","2:misc","3","4"]
 -- > ...
--- > main = xmonad $ defaultConfig {
+-- > main = xmonad $ def {
 -- >   logHook = wallpaperSetter defWallpaperConf {
 -- >                                wallpapers = defWPNames myWorkspaces
 -- >                                          <> WallpaperList [("1:main",WallpaperDir "1")]
@@ -85,7 +78,7 @@ newtype WallpaperList = WallpaperList [(WorkspaceId, Wallpaper)]
 instance Monoid WallpaperList where
   mempty = WallpaperList []
   mappend (WallpaperList w1) (WallpaperList w2) =
-    WallpaperList $ M.toList $ (M.fromList w2) `M.union` (M.fromList w1)
+    WallpaperList $ M.toList $ M.fromList w2 `M.union` M.fromList w1
 
 instance Semigroup WallpaperList where
   (<>) = mappend
@@ -103,9 +96,17 @@ defWallpaperConf = WallpaperConf "" $ WallpaperList []
 instance Default WallpaperConf where
     def = defWallpaperConf
 
--- |returns the default association list (maps name to name.jpg, non-alphanumeric characters are omitted)
+{-# DEPRECATED defWPNames "Use defWPNamesJpg instead" #-}
 defWPNames :: [WorkspaceId] -> WallpaperList
-defWPNames xs = WallpaperList $ map (\x -> (x,WallpaperFix (filter isAlphaNum x++".jpg"))) xs
+defWPNames = defWPNamesJpg
+
+-- | Return the default association list (maps @name@ to @name.jpg@, non-alphanumeric characters are omitted)
+defWPNamesJpg :: [WorkspaceId] -> WallpaperList
+defWPNamesJpg xs = WallpaperList $ map (\x -> (x, WallpaperFix (filter isAlphaNum x ++ ".jpg"))) xs
+
+-- | Like 'defWPNamesJpg', but map @name@ to @name.png@ instead.
+defWPNamesPng :: [WorkspaceId] -> WallpaperList
+defWPNamesPng xs = WallpaperList $ map (\x -> (x, WallpaperFix (filter isAlphaNum x ++ ".png"))) xs
 
 -- | Add this to your log hook with the workspace configuration as argument.
 wallpaperSetter :: WallpaperConf -> X ()
@@ -161,7 +162,6 @@ getPicRes picpath = do
     [[(w,"")],[(h,"")]] -> Just (w,h)
     _ -> Nothing
 
-
 -- |complete unset fields to default values (wallpaper directory = ~/.wallpapers,
 --  expects a file "NAME.jpg" for each workspace named NAME)
 completeWPConf :: WallpaperConf -> X WallpaperConf
@@ -199,20 +199,20 @@ applyWallpaper parts = do
   winset <- gets windowset
   let (vx,vy) = getVScreenDim winset
   layers <- liftIO $ mapM layerCommand parts
-  let basepart ="convert -size "++show vx++"x"++show vy++" xc:black "
+  let basepart ="convert -size " ++ show vx ++ "x" ++ show vy ++ " xc:black"
       endpart =" jpg:- | feh --no-xinerama --bg-tile --no-fehbg -"
-      cmd = basepart ++ (concat $ intersperse " " layers) ++ endpart
+      cmd = basepart ++ unwords layers ++ endpart
   liftIO $ runCommand cmd
 
 
 getVScreenDim :: S.StackSet i l a sid ScreenDetail -> (Integer, Integer)
-getVScreenDim = foldr maxXY (0,0) . map (screenRect . S.screenDetail) . S.screens
-  where maxXY (Rectangle x y w h) (mx,my) = ( fromIntegral ((fromIntegral x)+w) `max` mx
-                                            , fromIntegral ((fromIntegral y)+h) `max` my )
+getVScreenDim = foldr (maxXY . screenRect . S.screenDetail) (0,0) . S.screens
+  where maxXY (Rectangle x y w h) (mx,my) = ( fromIntegral (fromIntegral x+w) `max` mx
+                                            , fromIntegral (fromIntegral y+h) `max` my )
 
 needsRotation :: Rectangle -> (Int,Int) -> Bool
 needsRotation rect (px,py) = let wratio, pratio :: Double
-                                 wratio = (fromIntegral $ rect_width rect) / (fromIntegral $ rect_height rect)
+                                 wratio = fromIntegral (rect_width rect) / fromIntegral (rect_height rect)
                                  pratio = fromIntegral px / fromIntegral py
                              in wratio > 1 && pratio < 1 || wratio < 1 && pratio > 1
 
@@ -224,4 +224,4 @@ layerCommand (rect, path) = do
     Just rotate -> let size = show (rect_width rect) ++ "x" ++ show (rect_height rect) in
                      " \\( '"++path++"' "++(if rotate then "-rotate 90 " else "")
                       ++ " -scale "++size++"^ -gravity center -extent "++size++" +gravity \\)"
-                      ++ " -geometry +"++(show$rect_x rect)++"+"++(show$rect_y rect)++" -composite "
+                      ++ " -geometry +" ++ (show $rect_x rect) ++ "+" ++ (show $rect_y rect) ++ " -composite "

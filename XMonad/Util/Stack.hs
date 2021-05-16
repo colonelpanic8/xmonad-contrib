@@ -80,10 +80,7 @@ module XMonad.Util.Stack ( -- * Usage
                          ) where
 
 import qualified XMonad.StackSet as W
-import Control.Applicative ((<|>))
-import Control.Monad (guard)
-import Data.List (sortBy)
-
+import XMonad.Prelude (guard, sortBy, (!?), (<|>))
 
 
 type Zipper a = Maybe (W.Stack a)
@@ -182,7 +179,7 @@ focusMasterZ (Just s) = Just s
 
 -- | Refocus a @Stack a@ on an element satisfying the predicate, or fail to
 --   @Nothing@.
-findS :: Eq a => (a -> Bool) -> W.Stack a -> Maybe (W.Stack a)
+findS :: (a -> Bool) -> W.Stack a -> Maybe (W.Stack a)
 findS p st = st <$ (guard . p . W.focus) st <|> findUp st <|> findDown st
   where findDown = reverseZ . findUp . reverseS
         findUp s | u:ups <- W.up s = (if p u then Just else findUp)
@@ -190,11 +187,10 @@ findS p st = st <$ (guard . p . W.focus) st <|> findUp st <|> findDown st
                  | otherwise       = Nothing
 
 -- | Refocus a @Zipper a@ on an element satisfying the predicate, or fail to
---   @Nothing@. Never returns @Just Nothing@, so the second layer of @Maybe@ is
---   actually redundant.
-findZ :: Eq a => (a -> Bool) -> Zipper a -> Maybe (Zipper a)
+--   @Nothing@.
+findZ :: (a -> Bool) -> Zipper a -> Zipper a
 findZ _ Nothing   = Nothing
-findZ p (Just st) = Just <$> findS p st
+findZ p (Just st) = findS p st
 
 -- ** Extraction
 
@@ -329,9 +325,8 @@ elemZ a as = foldlZ_ step False as
 
 -- | Safe version of '!!'
 getI :: Int -> [a] -> Maybe a
-getI _ [] = Nothing
-getI 0 (a:_) = Just a
-getI i (_:as) = getI (i-1) as
+getI i xs = xs !? i
+{-# DEPRECATED getI "Use XMonad.Prelude.(!?) instead." #-}
 
 -- | Map a function across both 'Left's and 'Right's.
 -- The 'Bool' argument is 'True' in a 'Right', 'False'

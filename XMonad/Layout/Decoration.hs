@@ -1,4 +1,10 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, PatternGuards, TypeSynonymInstances #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternGuards         #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE CPP                   #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  XMonad.Layout.Decoration
@@ -30,12 +36,10 @@ module XMonad.Layout.Decoration
     , DecorationState, OrigWin
     ) where
 
-import Control.Monad (when)
-import Data.Maybe
-import Data.List
 import Foreign.C.Types(CInt)
 
 import XMonad
+import XMonad.Prelude
 import qualified XMonad.StackSet as W
 import XMonad.Hooks.UrgencyHook
 import XMonad.Layout.LayoutModifier
@@ -104,7 +108,11 @@ instance Default Theme where
           , activeTextColor     = "#FFFFFF"
           , inactiveTextColor   = "#BFBFBF"
           , urgentTextColor     = "#FF0000"
+#ifdef XFT
+          , fontName            = "xft:monospace"
+#else
           , fontName            = "-misc-fixed-*-*-*-*-10-*-*-*-*-*-*-*"
+#endif
           , decoWidth           = 200
           , decoHeight          = 20
           , windowTitleAddons   = []

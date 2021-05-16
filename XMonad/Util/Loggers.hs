@@ -31,8 +31,12 @@ module XMonad.Util.Loggers (
 
     -- * XMonad Loggers
     -- $xmonad
-    , logCurrent, logLayout, logTitle
-
+    , logCurrent, logLayout, logTitle, logTitles
+    , logConst, logDefault, (.|)
+    -- * XMonad: Screen-specific Loggers
+    -- $xmonad-screen
+    , logCurrentOnScreen, logLayoutOnScreen
+    , logTitleOnScreen, logWhenActive
     -- * Formatting Utilities
     -- $format
     , onLogger
@@ -43,7 +47,7 @@ module XMonad.Util.Loggers (
 
   ) where
 
-import XMonad (liftIO)
+import XMonad (liftIO, Window, gets)
 import XMonad.Core
 import qualified XMonad.StackSet as W
 import XMonad.Hooks.DynamicLog
@@ -51,14 +55,11 @@ import XMonad.Util.Font (Align (..))
 import XMonad.Util.NamedWindows (getName)
 
 import Control.Exception as E
-import Data.List (isPrefixOf, isSuffixOf)
-import Data.Maybe (fromMaybe)
-import Data.Traversable (traverse)
+import XMonad.Prelude (find, fromMaybe, isPrefixOf, isSuffixOf)
+import Data.Time (defaultTimeLocale, formatTime, getCurrentTime)
 import System.Directory (getDirectoryContents)
-import System.IO
-import System.Locale
+import System.IO (hGetLine)
 import System.Process (runInteractiveCommand)
-import System.Time
 
 econst :: Monad m => a -> IOException -> m a
 econst = const . return
@@ -126,8 +127,7 @@ battery = logCmd "acpi | sed -r 's/.*?: (.*%).*/\\1/; s/[dD]ischarging, ([0-9]+%
 --   For more information see something like
 --   <http://www.cplusplus.com/reference/clibrary/ctime/strftime.html>.
 date :: String -> Logger
-date fmt = io $ do cal <- (getClockTime >>= toCalendarTime)
-                   return . Just $ formatCalendarTime defaultTimeLocale fmt cal
+date fmt = io $ Just . formatTime defaultTimeLocale fmt <$> getCurrentTime
 
 -- | Get the load average.  This assumes that you have a
 --   utility called @uptime@ and that you have @sed@
@@ -174,6 +174,35 @@ maildirNew mdir = logFileCount (mdir ++ "/new/") (not . isPrefixOf ".")
 logTitle :: Logger
 logTitle = withWindowSet $ traverse (fmap show . getName) . W.peek
 
+-- | Get the titles of all windows on the current workspace and format
+-- them according to the given functions.
+--
+-- ==== __Example__
+--
+-- > myXmobarPP :: X PP
+-- > myXmobarPP = pure $ def
+-- >   { ppOrder  = [ws, l, _, wins] -> [ws, l, wins]
+-- >   , ppExtras = [logTitles formatFocused formatUnfocused]
+-- >   }
+-- >  where
+-- >   formatFocused   = wrap "[" "]" . xmobarColor "#ff79c6" "" . shorten 50 . xmobarStrip
+-- >   formatUnfocused = wrap "(" ")" . xmobarColor "#bd93f9" "" . shorten 30 . xmobarStrip
+--
+logTitles
+  :: (String -> String) -- ^ Formatting for the focused   window
+  -> (String -> String) -- ^ Formatting for the unfocused window
+  -> Logger
+logTitles formatFoc formatUnfoc = do
+  winset <- gets windowset
+  let focWin = W.peek  winset
+      wins   = W.index winset
+  winNames <- traverse (fmap show . getName) wins
+  pure . Just
+       . unwords
+       $ zipWith (\w n -> if Just w == focWin then formatFoc n else formatUnfoc n)
+                 wins
+                 winNames
+
 -- | Get the name of the current layout.
 logLayout :: Logger
 logLayout = withWindowSet $ return . Just . ld
@@ -182,6 +211,70 @@ logLayout = withWindowSet $ return . Just . ld
 -- | Get the name of the current workspace.
 logCurrent :: Logger
 logCurrent = withWindowSet $ return . Just . W.currentTag
+
+-- | Log the given string, as is.
+logConst :: String -> Logger
+logConst = return . Just
+
+-- | If the first logger returns @Nothing@, the default logger is used.
+-- For example, to display a quote when no windows are on the screen,
+-- you can do:
+--
+-- > logDefault logTitle (logConst "Hey, you, you're finally awake.")
+logDefault :: Logger -> Logger -> Logger
+logDefault l d = l >>= maybe d logConst
+
+-- | An infix operator for 'logDefault', which can be more convenient to
+-- combine multiple loggers.
+--
+-- > logTitle .| logWhenActive 0 (logConst "*") .| logConst "There's nothing here"
+(.|) :: Logger -> Logger -> Logger
+(.|) = logDefault
+
+-- $xmonad-screen
+-- It is also possible to bind loggers like 'logTitle' to a specific screen. For
+-- example, using @logTitleOnScreen 1@ will log the title of the focused window
+-- on screen 1, even if screen 1 is not currently active.
+
+-- | Only display the 'Logger' if the screen with the given 'ScreenId' is
+-- active.
+-- For example, this can be used to create a marker that is only displayed
+-- when the primary screen is active.
+--
+-- > logWhenActive 0 (logConst "*")
+logWhenActive :: ScreenId -> Logger -> Logger
+logWhenActive n l = do
+  c <- withWindowSet $ return . W.screen . W.current
+  if n == c then l else return Nothing
+
+-- | Get the title (name) of the focused window, on the given screen.
+logTitleOnScreen :: ScreenId -> Logger
+logTitleOnScreen =
+  withScreen
+    $ traverse (fmap show . getName)
+    . (W.focus <$>)
+    . W.stack
+    . W.workspace
+
+-- | Get the name of the visible workspace on the given screen.
+logCurrentOnScreen :: ScreenId -> Logger
+logCurrentOnScreen = withScreen $ logConst . W.tag . W.workspace
+
+-- | Get the name of the current layout on the given screen.
+logLayoutOnScreen :: ScreenId -> Logger
+logLayoutOnScreen =
+  withScreen $ logConst . description . W.layout . W.workspace
+
+-- | A shortcut to a screen
+type WindowScreen = W.Screen WorkspaceId (Layout Window) Window ScreenId ScreenDetail
+
+-- | A helper function to create screen-specific loggers.
+withScreen :: (WindowScreen -> Logger) -> ScreenId -> Logger
+withScreen f n = do
+  ss <- withWindowSet $ return . W.screens
+  case find ((== n) . W.screen) ss of
+    Just s  -> f s
+    Nothing -> pure Nothing
 
 -- $format
 -- Combine logger formatting functions to make your
@@ -193,7 +286,7 @@ logCurrent = withWindowSet $ return . Just . W.currentTag
 -- > myLogHook = dynamicLogWithPP def {
 -- >     -- skipped
 -- >     , ppExtras = [lLoad, lTitle, logSp 3, wrapL "[" "]" $ date "%a %d %b"]
--- >     , ppOrder = \(ws,l,_,xs) -> [l,ws] ++ xs
+-- >     , ppOrder = \(ws:l:_:xs) -> [l,ws] ++ xs
 -- >     }
 -- >   where
 -- >     -- lTitle = fixedWidthL AlignCenter "." 99 . dzenColorL "cornsilk3" "" . padL . shortenL 80 $ logTitle

@@ -38,14 +38,13 @@ module XMonad.Util.EZConfig (
 
 import XMonad
 import XMonad.Actions.Submap
+import XMonad.Prelude hiding (many)
 
 import XMonad.Util.NamedActions
 
-import qualified Data.Map as M
-import Data.List (foldl', sortBy, groupBy, nub)
-import Data.Ord (comparing)
-import Data.Maybe
 import Control.Arrow (first, (&&&))
+import qualified Data.Map as M
+import Data.Ord (comparing)
 
 import Text.ParserCombinators.ReadP
 
@@ -109,7 +108,7 @@ additionalKeysP conf keyList =
 -- >                 `removeKeys` [(mod1Mask .|. shiftMask, n) | n <- [xK_1 .. xK_9]]
 removeKeys :: XConfig a -> [(KeyMask, KeySym)] -> XConfig a
 removeKeys conf keyList =
-    conf { keys = \cnf -> keys conf cnf `M.difference` M.fromList (zip keyList $ repeat ()) }
+    conf { keys = \cnf -> foldr M.delete (keys conf cnf) keyList }
 
 -- | Like 'removeKeys', except using short @String@ key descriptors
 --   like @\"M-m\"@ instead of @(modMask, xK_m)@, as described in the
@@ -130,8 +129,7 @@ additionalMouseBindings conf mouseBindingsList =
 -- | Like 'removeKeys', but for mouse bindings.
 removeMouseBindings :: XConfig a -> [(ButtonMask, Button)] -> XConfig a
 removeMouseBindings conf mouseBindingList =
-    conf { mouseBindings = \cnf -> mouseBindings conf cnf `M.difference`
-                                   M.fromList (zip mouseBindingList $ repeat ()) }
+    conf { mouseBindings = \cnf -> foldr M.delete (mouseBindings conf cnf) mouseBindingList }
 
 
 --------------------------------------------------------------
@@ -382,9 +380,6 @@ mkSubmaps' subm binds = map combine gathered
         combine ks = (head . fst . head $ ks,
                       subm . mkSubmaps' subm $ map (first tail) ks)
         fstKey = (==) `on` (head . fst)
-
-on :: (a -> a -> b) -> (c -> a) -> c -> c -> b
-op `on` f = \x y -> f x `op` f y
 
 -- | Given a configuration record and a list of (key sequence
 --   description, action) pairs, parse the key sequences into lists of

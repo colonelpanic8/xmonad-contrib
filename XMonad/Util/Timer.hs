@@ -20,7 +20,6 @@ module XMonad.Util.Timer
     ) where
 
 import XMonad
-import Control.Applicative
 import Control.Concurrent
 import Data.Unique
 
@@ -42,7 +41,7 @@ startTimer s = io $ do
     a <- internAtom d "XMONAD_TIMER" False
     allocaXEvent $ \e -> do
          setEventType e clientMessage
-         setClientMessageEvent e rw a 32 (fromIntegral u) currentTime
+         setClientMessageEvent e rw a 32 (fromIntegral u) 0
          sendEvent d rw False structureNotifyMask e
     sync d False
   return u

@@ -4,11 +4,7 @@
 module XMonad.Config.Dmwit where
 
 -- system imports
-import Control.Applicative
-import Control.Monad
 import Control.Monad.Trans
-import Data.Char
-import Data.List
 import Data.Map (Map, fromList)
 import Data.Ratio
 import Data.Word
@@ -32,6 +28,7 @@ import XMonad.Layout.Grid
 import XMonad.Layout.IndependentScreens
 import XMonad.Layout.Magnifier
 import XMonad.Layout.NoBorders
+import XMonad.Prelude
 import XMonad.Util.Dzen hiding (x, y)
 import XMonad.Util.SpawnOnce
 -- }}}
@@ -112,7 +109,6 @@ fullscreenMPlayer = className =? "MPlayer" --> do
         Just (16 :% 9)  -> viewFullOn 1 "5" win
         _               -> doFloat
     where
-    fi               = fromIntegral :: Dimension -> Double
     approx (n, d)    = approxRational (fi n / fi d) (1/100)
 
 operationOn f s n w = do

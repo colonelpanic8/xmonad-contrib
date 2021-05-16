@@ -1,4 +1,7 @@
 {-# LANGUAGE CPP, FlexibleInstances, MultiParamTypeClasses, DeriveDataTypeable, PatternGuards #-}
+#ifdef TESTING
+{-# OPTIONS_GHC -Wno-duplicate-exports #-}
+#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  XMonad.Layout.LimitWindows
@@ -34,11 +37,10 @@ module XMonad.Layout.LimitWindows (
     LimitWindows, Selection,
     ) where
 
-import XMonad.Layout.LayoutModifier
 import XMonad
+import XMonad.Layout.LayoutModifier
+import XMonad.Prelude (fromJust, guard, (<=<))
 import qualified XMonad.StackSet as W
-import Control.Monad((<=<),guard)
-import Data.Maybe(fromJust)
 
 -- $usage
 -- To use this module, add the following import to @~\/.xmonad\/xmonad.hs@:

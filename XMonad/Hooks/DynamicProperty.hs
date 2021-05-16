@@ -26,9 +26,7 @@
 module XMonad.Hooks.DynamicProperty where
 
 import XMonad
-import Data.Monoid
-import Control.Applicative
-import Control.Monad (when)
+import XMonad.Prelude
 
 -- |
 -- Run a 'ManageHook' when a specific property is changed on a window. Note
@@ -37,7 +35,7 @@ import Control.Monad (when)
 -- their titles on the fly!):
 --
 -- dynamicPropertyChange "WM_NAME" (className =? "Iceweasel" <&&> title =? "whatever" --> doShift "2")
--- 
+--
 -- Note that the fixity of (-->) won't allow it to be mixed with ($), so you
 -- can't use the obvious $ shorthand.
 --
@@ -47,9 +45,9 @@ import Control.Monad (when)
 -- other 'ManageHook':
 --
 -- >      , handleEventHook = dynamicPropertyChange "WM_NAME" myDynHook <+> handleEventHook baseConfig
--- > 
+-- >
 -- >    {- ... -}
--- > 
+-- >
 -- >    myDynHook = composeAll [...]
 --
 dynamicPropertyChange :: String -> ManageHook -> Event -> X All

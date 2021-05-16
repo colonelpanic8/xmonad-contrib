@@ -32,9 +32,8 @@ module XMonad.Actions.Prefix
        ) where
 
 import qualified Data.Map as M
-import Data.Maybe
-import Control.Monad (liftM2)
 
+import XMonad.Prelude
 import XMonad
 import XMonad.Util.ExtensibleState as XS
 import XMonad.Util.Paste (sendKey)
@@ -94,12 +93,12 @@ grab" and let the C-c C-u be sent to the application.
 
 The simplest way to enable this is to use 'useDefaultPrefixArgument'
 
->    xmonad $ useDefaultPrefixArgument $ defaultConfig { .. }
+>    xmonad $ useDefaultPrefixArgument $ def { .. }
 
 The default prefix argument is C-u.  If you want to customize the
 prefix argument, use the following:
 
->    xmonad $ usePrefixArgument prefixKey $ defaultConfig { .. }
+>    xmonad $ usePrefixArgument prefixKey $ def { .. }
 
 where 'prefixKey' is a function which takes 'XConfig' as an argument
 in case you wish to extract the 'modMask'.  An example

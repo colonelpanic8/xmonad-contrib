@@ -16,6 +16,7 @@ module XMonad.Layout.Fullscreen
     ( -- * Usage:
       -- $usage
      fullscreenSupport
+    ,fullscreenSupportBorder
     ,fullscreenFull
     ,fullscreenFocus
     ,fullscreenFullRect
@@ -31,18 +32,16 @@ module XMonad.Layout.Fullscreen
     ) where
 
 import           XMonad
+import           XMonad.Prelude
 import           XMonad.Layout.LayoutModifier
+import           XMonad.Layout.NoBorders        (SmartBorder, smartBorders)
 import           XMonad.Hooks.EwmhDesktops      (fullscreenStartup)
 import           XMonad.Hooks.ManageHelpers     (isFullscreen)
 import           XMonad.Util.WindowProperties
 import qualified XMonad.Util.Rectangle          as R
 import qualified XMonad.StackSet                as W
 
-import           Data.List
-import           Data.Maybe
-import           Data.Monoid
 import qualified Data.Map                       as M
-import           Control.Monad
 import           Control.Arrow                  (second)
 
 -- $usage
@@ -72,7 +71,7 @@ import           Control.Arrow                  (second)
 --
 -- > main = xmonad
 -- >      $ fullscreenSupport
--- >      $ defaultConfig { ... }
+-- >      $ def { ... }
 fullscreenSupport :: LayoutClass l Window =>
   XConfig l -> XConfig (ModifiedLayout FullscreenFull l)
 fullscreenSupport c = c {
@@ -81,6 +80,21 @@ fullscreenSupport c = c {
     manageHook = manageHook c <+> fullscreenManageHook,
     startupHook = startupHook c <+> fullscreenStartup
   }
+
+-- | fullscreenSupport with smartBorders support so the border doesn't
+-- show when the window is fullscreen
+--
+-- > main = xmonad
+-- >      $ fullscreenSupportBorder
+-- >      $ def { ... }
+fullscreenSupportBorder :: LayoutClass l Window =>
+    XConfig l -> XConfig (ModifiedLayout FullscreenFull
+    (ModifiedLayout SmartBorder (ModifiedLayout FullscreenFull l)))
+fullscreenSupportBorder c =
+    fullscreenSupport c { layoutHook = smartBorders
+                                       $ fullscreenFull
+                                       $ layoutHook c
+                        }
 
 -- | Messages that control the fullscreen state of the window.
 -- AddFullscreen and RemoveFullscreen are sent to all layouts
@@ -199,9 +213,7 @@ fullscreenEventHook (ClientMessageEvent _ _ _ dpy win typ (action:dats)) = do
   wmstate <- getAtom "_NET_WM_STATE"
   fullsc <- getAtom "_NET_WM_STATE_FULLSCREEN"
   wstate <- fromMaybe [] <$> getProp32 wmstate win
-  let fi :: (Integral i, Num n) => i -> n
-      fi = fromIntegral
-      isFull = fi fullsc `elem` wstate
+  let isFull = fi fullsc `elem` wstate
       remove = 0
       add = 1
       toggle = 2

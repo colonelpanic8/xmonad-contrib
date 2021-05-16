@@ -25,19 +25,15 @@ module XMonad.Prompt.Unicode (
  ) where
 
 import qualified Data.ByteString.Char8 as BS
-import Data.Char
-import Data.Maybe
 import Data.Ord
 import Numeric
-import System.Environment
 import System.IO
-import System.IO.Unsafe
 import System.IO.Error
-import Control.Arrow
-import Data.List
 import Text.Printf
+import Control.Arrow (second)
 
 import XMonad
+import XMonad.Prelude
 import qualified XMonad.Util.ExtensibleState as XS
 import XMonad.Util.Run
 import XMonad.Prompt

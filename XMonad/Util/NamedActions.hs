@@ -46,11 +46,11 @@ module XMonad.Util.NamedActions (
 
 
 import XMonad.Actions.Submap(submap)
+import XMonad.Prelude (groupBy)
 import XMonad
 import System.Posix.Process(executeFile)
 import Control.Arrow(Arrow((&&&), second, (***)))
 import Data.Bits(Bits((.&.), complement))
-import Data.List (groupBy)
 import System.Exit(ExitCode(ExitSuccess), exitWith)
 
 import qualified Data.Map as M
@@ -119,6 +119,7 @@ spawn' :: String -> NamedAction
 spawn' x = addName x $ spawn x
 
 class HasName a where
+    {-# MINIMAL getAction #-}
     showName :: a -> [String]
     showName = const [""]
     getAction :: a -> X ()

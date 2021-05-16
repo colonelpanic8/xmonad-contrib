@@ -65,13 +65,12 @@ module XMonad.Actions.Search (   -- * Usage
                           ) where
 
 import           Codec.Binary.UTF8.String (encode)
-import           Data.Char                (isAlphaNum, isAscii)
-import           Data.List                (isPrefixOf)
 import           Text.Printf
 import           XMonad                   (X (), liftIO)
 import           XMonad.Prompt            (XPConfig (), XPrompt (showXPrompt, nextCompletion, commandToComplete),
                                            getNextCompletion,
                                            historyCompletionP, mkXPrompt)
+import           XMonad.Prelude           (isAlphaNum, isAscii, isPrefixOf)
 import           XMonad.Prompt.Shell      (getBrowser)
 import           XMonad.Util.Run          (safeSpawn)
 import           XMonad.Util.XSelection   (getSelection)
@@ -363,18 +362,16 @@ namedEngine name (SearchEngine _ site) = searchEngineF name site
    Prompt's result, passes it to a given searchEngine and opens it in a given
    browser. -}
 promptSearchBrowser :: XPConfig -> Browser -> SearchEngine -> X ()
-promptSearchBrowser config browser (SearchEngine name site) =
-    mkXPrompt (Search name) config (historyCompletionP ("Search [" `isPrefixOf`)) $ search browser site
+promptSearchBrowser config browser (SearchEngine name site) = do
+    hc <- historyCompletionP ("Search [" `isPrefixOf`)
+    mkXPrompt (Search name) config hc $ search browser site
 
 {- | Like 'promptSearchBrowser', but only suggest previous searches for the
    given 'SearchEngine' in the prompt. -}
 promptSearchBrowser' :: XPConfig -> Browser -> SearchEngine -> X ()
-promptSearchBrowser' config browser (SearchEngine name site) =
-    mkXPrompt
-        (Search name)
-        config
-        (historyCompletionP (searchName `isPrefixOf`))
-        $ search browser site
+promptSearchBrowser' config browser (SearchEngine name site) = do
+    hc <- historyCompletionP (searchName `isPrefixOf`)
+    mkXPrompt (Search name) config hc $ search browser site
   where
     searchName = showXPrompt (Search name)
 

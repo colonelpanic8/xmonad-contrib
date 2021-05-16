@@ -29,7 +29,6 @@ module XMonad.Actions.TopicSpace
 
     -- * Switching and Shifting Topics
   , switchTopic
-  , switchTopicWith
   , switchNthLastFocused
   , switchNthLastFocusedByScreen
   , switchNthLastFocusedExclude
@@ -42,11 +41,16 @@ module XMonad.Actions.TopicSpace
 
     -- * Getting the Topic History
   , getLastFocusedTopics
-  , getLastFocusedTopicsByScreen
+  , workspaceHistory
+  , workspaceHistoryByScreen
 
     -- * Modifying the Topic History
   , setLastFocusedTopic
   , reverseLastFocusedTopics
+
+    -- * History hooks
+  , workspaceHistoryHook
+  , workspaceHistoryHookExclude
 
     -- * Pretty Printing
   , pprWindowSet
@@ -59,15 +63,12 @@ module XMonad.Actions.TopicSpace
 where
 
 import XMonad
+import XMonad.Prelude
 
-import qualified Data.Map                as M
+import qualified Data.Map.Strict         as M
 import qualified XMonad.Hooks.DynamicLog as DL
 import qualified XMonad.StackSet         as W
 
-import Control.Applicative (liftA2)
-import Control.Monad (replicateM_, unless, when)
-import Data.List ((\\), elemIndex, nub, sort, sortOn)
-import Data.Maybe (fromJust, fromMaybe, isNothing, listToMaybe)
 import System.IO (hClose, hPutStr)
 
 import XMonad.Prompt (XPConfig)
@@ -78,6 +79,8 @@ import XMonad.Hooks.UrgencyHook (readUrgents)
 import XMonad.Hooks.WorkspaceHistory
     ( workspaceHistory
     , workspaceHistoryByScreen
+    , workspaceHistoryHook
+    , workspaceHistoryHookExclude
     , workspaceHistoryModify
     )
 
@@ -112,6 +115,12 @@ import XMonad.Util.Run (spawnPipe)
 --
 --   * Replace the @workspaces@ field in your 'XConfig' with a list of your
 --     topics names
+--
+--   * Optionally, if you want to use the history features, add
+--     'workspaceHistoryHook' from "XMonad.Hooks.WorkspaceHistory"
+--     (re-exported by this module) or an equivalent function to your
+--     @logHook@.  See the documentation of
+--     "XMonad.Hooks.WorkspaceHistory" for further details
 --
 -- Let us go through a full example together.  Given the following topic names
 --
@@ -272,6 +281,7 @@ data TopicConfig = TopicConfig { topicDirs          :: M.Map Topic Dir
                                  -- usually 10 is a good default since we can bind all of
                                  -- them using numeric keypad.
                                }
+{-# DEPRECATED maxTopicHistory "This field will be removed in the future; history is now handled by XMonad.Hooks.WorkspaceHistory" #-}
 
 instance Default TopicConfig where
   def            = TopicConfig { topicDirs = M.empty
@@ -284,10 +294,7 @@ instance Default TopicConfig where
 -- | Return the (possibly empty) list of last focused topics.
 getLastFocusedTopics :: X [Topic]
 getLastFocusedTopics = workspaceHistory
-
--- | Like 'getLastFocusedTopics', but group the topics by their screen-id's.
-getLastFocusedTopicsByScreen :: X [(ScreenId, [Topic])]
-getLastFocusedTopicsByScreen = workspaceHistoryByScreen
+{-# DEPRECATED getLastFocusedTopics "Use XMonad.Hooks.WorkspaceHistory.workspaceHistory (re-exported by this module) instead" #-}
 
 -- | Given a 'TopicConfig', a topic, and a predicate to select topics that one
 -- wants to keep, this function will cons the topic in front of the list of
@@ -298,6 +305,7 @@ setLastFocusedTopic tc w predicate = do
   sid <- gets $ W.screen . W.current . windowset
   workspaceHistoryModify $
     take (maxTopicHistory tc) . nub . filter (predicate . snd) . ((sid, w) :)
+{-# DEPRECATED setLastFocusedTopic "Use XMonad.Hooks.WorkspaceHistory instead" #-}
 
 -- | Reverse the list of "last focused topics"
 reverseLastFocusedTopics :: X ()
@@ -315,7 +323,7 @@ pprWindowSet tg pp = do
   setLastFocusedTopic tg
                       (W.tag . W.workspace . W.current $ winset)
                       (`notElem` empty_workspaces)
-  lastWs <- getLastFocusedTopics
+  lastWs <- workspaceHistory
   let depth topic = fromJust $ elemIndex topic (lastWs ++ [topic])
       add_depth proj topic = proj pp . (((topic++":")++) . show) . depth $ topic
       pp' = pp { ppHidden = add_depth ppHidden, ppVisible = add_depth ppVisible }
@@ -337,19 +345,13 @@ currentTopicAction tg = topicAction tg =<< gets (W.tag . W.workspace . W.current
 
 -- | Switch to the given topic.
 switchTopic :: TopicConfig -> Topic -> X ()
-switchTopic = switchTopicWith (const True)
-
--- | Like 'switchTopic', but give a custom filtering function to
--- 'setLastFocusedTopic'.
-switchTopicWith :: (Topic -> Bool) -> TopicConfig -> Topic -> X ()
-switchTopicWith predicate tg topic = do
+switchTopic tc topic = do
   -- Switch to topic and add it to the last seen topics
   windows $ W.greedyView topic
-  setLastFocusedTopic tg topic predicate
 
   -- If applicable, execute the topic action
   wins <- gets (W.integrate' . W.stack . W.workspace . W.current . windowset)
-  when (null wins) $ topicAction tg topic
+  when (null wins) $ topicAction tc topic
 
 -- | Switch to the Nth last focused topic or fall back to the 'defaultTopic'.
 switchNthLastFocused :: TopicConfig -> Int -> X ()
@@ -358,7 +360,7 @@ switchNthLastFocused = switchNthLastFocusedExclude []
 -- | Like 'switchNthLastFocused', but also filter out certain topics.
 switchNthLastFocusedExclude :: [Topic] -> TopicConfig -> Int -> X ()
 switchNthLastFocusedExclude excludes tc depth = do
-  lastWs <- filter (`notElem` excludes) <$> getLastFocusedTopics
+  lastWs <- filter (`notElem` excludes) <$> workspaceHistory
   switchTopic tc $ (lastWs ++ repeat (defaultTopic tc)) !! depth
 
 -- | Like 'switchNthLastFocused', but only consider topics that used to
@@ -376,13 +378,13 @@ switchNthLastFocusedByScreen tc depth = do
        . listToMaybe
        . map snd
        . filter ((== sid) . fst)
-     <$> getLastFocusedTopicsByScreen
+     <$> workspaceHistoryByScreen
   switchTopic tc $ (sws ++ repeat (defaultTopic tc)) !! depth
 
 -- | Shift the focused window to the Nth last focused topic, or fall back to doing nothing.
 shiftNthLastFocused :: Int -> X ()
 shiftNthLastFocused n = do
-  ws <- fmap (listToMaybe . drop n) getLastFocusedTopics
+  ws <- fmap (listToMaybe . drop n) workspaceHistory
   whenJust ws $ windows . W.shift
 
 -- | Return the directory associated with the current topic, or return the empty

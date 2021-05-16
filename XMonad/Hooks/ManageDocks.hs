@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, PatternGuards, FlexibleInstances, MultiParamTypeClasses, CPP #-}
+{-# LANGUAGE LambdaCase #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module       : XMonad.Hooks.ManageDocks
@@ -38,14 +39,11 @@ import Foreign.C.Types (CLong)
 import XMonad.Layout.LayoutModifier
 import XMonad.Util.Types
 import XMonad.Util.WindowProperties (getProp32s)
-import XMonad.Util.XUtils (fi)
 import qualified XMonad.Util.ExtensibleState as XS
-import Data.Monoid (All(..), mempty)
-import Data.Functor((<$>))
+import XMonad.Prelude (All (..), fi, filterM, foldlM, void, when, (<=<))
 
 import qualified Data.Set as S
 import qualified Data.Map as M
-import Control.Monad (when, forM_, filterM)
 
 -- $usage
 -- To use this module, add the following import to @~\/.xmonad\/xmonad.hs@:
@@ -54,7 +52,7 @@ import Control.Monad (when, forM_, filterM)
 --
 -- Wrap your xmonad config with a call to 'docks', like so:
 --
--- > main = xmonad $ docks def
+-- > main = xmonad $ … . docks . … $ def{…}
 --
 -- Then add 'avoidStruts' or 'avoidStrutsOn' layout modifier to your layout
 -- to prevent windows from overlapping these windows.
@@ -91,8 +89,7 @@ docks c = c { startupHook     = docksStartupHook <+> startupHook c
             , handleEventHook = docksEventHook <+> handleEventHook c
             , manageHook      = manageDocks <+> manageHook c }
 
-newtype StrutCache = StrutCache { fromStrutCache :: M.Map Window [Strut] }
-    deriving (Eq, Typeable)
+type WindowStruts = M.Map Window [Strut]
 
 data UpdateDocks = UpdateDocks deriving Typeable
 instance Message UpdateDocks
@@ -100,25 +97,52 @@ instance Message UpdateDocks
 refreshDocks :: X ()
 refreshDocks = sendMessage UpdateDocks
 
+-- Nothing means cache hasn't been initialized yet
+newtype StrutCache = StrutCache { fromStrutCache :: Maybe WindowStruts }
+    deriving (Eq, Typeable)
+
 instance ExtensionClass StrutCache where
-  initialValue = StrutCache M.empty
+    initialValue = StrutCache Nothing
 
-updateStrutCache :: Window -> [Strut] -> X Bool
-updateStrutCache w strut =
-  XS.modified $ StrutCache . M.insert w strut . fromStrutCache
+modifiedStrutCache :: (Maybe WindowStruts -> X WindowStruts) -> X Bool
+modifiedStrutCache f = XS.modifiedM $ fmap (StrutCache . Just) . f . fromStrutCache
 
-deleteFromStructCache :: Window -> X Bool
-deleteFromStructCache w =
-  XS.modified $ StrutCache . M.delete w . fromStrutCache
+getStrutCache :: X WindowStruts
+getStrutCache = do
+    cache <- maybeInitStrutCache =<< XS.gets fromStrutCache
+    cache <$ XS.put (StrutCache (Just cache))
+
+updateStrutCache :: Window -> X Bool
+updateStrutCache w = modifiedStrutCache $ updateStrut w <=< maybeInitStrutCache
+
+deleteFromStrutCache :: Window -> X Bool
+deleteFromStrutCache w = modifiedStrutCache $ fmap (M.delete w) . maybeInitStrutCache
+
+maybeInitStrutCache :: Maybe WindowStruts -> X WindowStruts
+maybeInitStrutCache = maybe (queryDocks >>= foldlM (flip updateStrut) M.empty) pure
+  where
+    queryDocks = withDisplay $ \dpy -> do
+        (_, _, wins) <- io . queryTree dpy =<< asks theRoot
+        filterM (runQuery checkDock) wins
+
+updateStrut :: Window -> WindowStruts -> X WindowStruts
+updateStrut w cache = do
+    when (w `M.notMember` cache) $ requestDockEvents w
+    strut <- getStrut w
+    pure $ M.insert w strut cache
 
 -- | Detects if the given window is of type DOCK and if so, reveals
 --   it, but does not manage it.
 manageDocks :: ManageHook
-manageDocks = checkDock --> (doIgnore <+> setDocksMask)
-    where setDocksMask = do
-            ask >>= \win -> liftX $ withDisplay $ \dpy ->
-                io $ selectInput dpy win (propertyChangeMask .|. structureNotifyMask)
-            mempty
+manageDocks = checkDock --> (doIgnore <+> doRequestDockEvents)
+  where
+    doRequestDockEvents = ask >>= liftX . requestDockEvents >> mempty
+
+-- | Request events for a dock window.
+-- (Only if not already a client to avoid overriding 'clientMask')
+requestDockEvents :: Window -> X ()
+requestDockEvents w = whenX (not <$> isClient w) $ withDisplay $ \dpy ->
+    io $ selectInput dpy w (propertyChangeMask .|. structureNotifyMask)
 
 -- | Checks if a window is a DOCK or DESKTOP window
 checkDock :: Query Bool
@@ -134,32 +158,23 @@ checkDock = ask >>= \w -> liftX $ do
 -- new dock.
 docksEventHook :: Event -> X All
 docksEventHook (MapNotifyEvent { ev_window = w }) = do
-    whenX (runQuery checkDock w <&&> (not <$> isClient w)) $ do
-        strut <- getStrut w
-        whenX (updateStrutCache w strut) refreshDocks
+    whenX (runQuery checkDock w <&&> (not <$> isClient w)) $
+        whenX (updateStrutCache w) refreshDocks
     return (All True)
 docksEventHook (PropertyEvent { ev_window = w
                               , ev_atom = a }) = do
     nws <- getAtom "_NET_WM_STRUT"
     nwsp <- getAtom "_NET_WM_STRUT_PARTIAL"
-    when (a == nws || a == nwsp) $ do
-        strut <- getStrut w
-        whenX (updateStrutCache w strut) refreshDocks
+    when (a == nws || a == nwsp) $
+        whenX (updateStrutCache w) refreshDocks
     return (All True)
 docksEventHook (DestroyWindowEvent {ev_window = w}) = do
-    whenX (deleteFromStructCache w) refreshDocks
+    whenX (deleteFromStrutCache w) refreshDocks
     return (All True)
 docksEventHook _ = return (All True)
 
 docksStartupHook :: X ()
-docksStartupHook = withDisplay $ \dpy -> do
-    rootw <- asks theRoot
-    (_,_,wins) <- io $ queryTree dpy rootw
-    docks <- filterM (runQuery checkDock) wins
-    forM_ docks $ \win -> do
-        strut <- getStrut win
-        updateStrutCache win strut
-    refreshDocks
+docksStartupHook = void $ getStrutCache
 
 -- | Gets the STRUT config, if present, in xmonad gap order
 getStrut :: Window -> X [Strut]
@@ -182,7 +197,7 @@ getStrut w = do
 calcGap :: S.Set Direction2D -> X (Rectangle -> Rectangle)
 calcGap ss = withDisplay $ \dpy -> do
     rootw <- asks theRoot
-    struts <- (filter careAbout . concat) <$> XS.gets (M.elems . fromStrutCache)
+    struts <- filter careAbout . concat . M.elems <$> getStrutCache
 
     -- we grab the window attributes of the root window rather than checking
     -- the width of the screen because xlib caches this info and it tends to

@@ -31,7 +31,7 @@ module XMonad.Layout.WorkspaceDir (
                                   ) where
 
 import System.Directory ( setCurrentDirectory, getCurrentDirectory )
-import Control.Monad ( when )
+import XMonad.Prelude ( when )
 
 import XMonad hiding ( focus )
 import XMonad.Prompt ( XPConfig )
@@ -62,7 +62,7 @@ import XMonad.StackSet ( tag, currentTag )
 -- If you prefer a prompt with case-insensitive completion:
 --
 -- >  , ((modm .|. shiftMask, xK_x     ),
---       changeDir def {complCaseSensitivity = ComplCaseSensitive False})
+--       changeDir def {complCaseSensitivity = CaseInSensitive})
 --
 -- For detailed instruction on editing the key binding see:
 --

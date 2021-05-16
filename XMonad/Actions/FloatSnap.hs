@@ -27,8 +27,7 @@ module XMonad.Actions.FloatSnap (
                 ifClick') where
 
 import XMonad
-import Data.List (sort)
-import Data.Maybe (listToMaybe,fromJust,isNothing)
+import XMonad.Prelude (fromJust, isNothing, listToMaybe, sort)
 import qualified XMonad.StackSet as W
 import qualified Data.Set as S
 
@@ -120,7 +119,6 @@ snapMagicResize
     -> Window      -- ^ The window to move and resize.
     -> X ()
 snapMagicResize dir collidedist snapdist w = whenX (isClient w) $ withDisplay $ \d -> do
-    io $ raiseWindow d w
     wa <- io $ getWindowAttributes d w
 
     (xbegin,xend) <- handleAxis True d wa
@@ -170,7 +168,6 @@ snapMagicMove
     -> Window    -- ^ The window to move.
     -> X ()
 snapMagicMove collidedist snapdist w = whenX (isClient w) $ withDisplay $ \d -> do
-    io $ raiseWindow d w
     wa <- io $ getWindowAttributes d w
 
     nx <- handleAxis True d wa
@@ -211,7 +208,6 @@ snapMove D = doSnapMove False False
 
 doSnapMove :: Bool -> Bool -> Maybe Int -> Window -> X ()
 doSnapMove horiz rev collidedist w = whenX (isClient w) $ withDisplay $ \d -> do
-    io $ raiseWindow d w
     wa <- io $ getWindowAttributes d w
     ((bl,br,_),(fl,fr,_)) <- getSnap horiz collidedist d w
 
@@ -251,7 +247,6 @@ snapShrink = snapResize False
 
 snapResize :: Bool -> Direction2D -> Maybe Int -> Window -> X ()
 snapResize grow dir collidedist w = whenX (isClient w) $ withDisplay $ \d -> do
-    io $ raiseWindow d w
     wa <- io $ getWindowAttributes d w
     mr <- case dir of
               L -> do ((mg,ms,_),(_,_,_)) <- getSnap True collidedist d w

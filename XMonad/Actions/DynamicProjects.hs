@@ -39,18 +39,14 @@ module XMonad.Actions.DynamicProjects
        , lookupProject
        , currentProject
        , activateProject
+       , modifyProject
        ) where
 
 --------------------------------------------------------------------------------
-import Control.Applicative ((<|>))
-import Control.Monad (when, unless)
-import Data.Char (isSpace)
-import Data.List (sort, union, stripPrefix)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import Data.Maybe (fromMaybe, isNothing)
-import Data.Monoid ((<>))
 import System.Directory (setCurrentDirectory, getHomeDirectory, makeAbsolute)
+import XMonad.Prelude
 import XMonad
 import XMonad.Actions.DynamicWorkspaces
 import XMonad.Prompt

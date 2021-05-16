@@ -20,13 +20,18 @@ module XMonad.Config.Mate (
     -- $usage
     mateConfig,
     mateRun,
+    matePanel,
     mateRegister,
+    mateLogout,
+    mateShutdown,
     desktopLayoutModifiers
     ) where
 
 import XMonad
 import XMonad.Config.Desktop
 import XMonad.Util.Run (safeSpawn)
+import XMonad.Util.Ungrab
+import XMonad.Prelude (toUpper)
 
 import qualified Data.Map as M
 
@@ -49,19 +54,27 @@ mateConfig = desktopConfig
 
 mateKeys (XConfig {modMask = modm}) = M.fromList $
     [ ((modm, xK_p), mateRun)
-    , ((modm .|. shiftMask, xK_q), spawn "mate-session-save --logout-dialog") ]
+    , ((modm, xK_d), unGrab >> matePanel "MAIN_MENU")
+    , ((modm .|. shiftMask, xK_q), mateLogout) ]
 
 -- | Launch the "Run Application" dialog.  mate-panel must be running for this
--- to work.
+-- to work.  partial application for existing keybinding compatibility.
 mateRun :: X ()
-mateRun = withDisplay $ \dpy -> do
+mateRun = matePanel "RUN_DIALOG"
+
+-- | Launch a panel action. Either the "Run Application" dialog ("run_dialog" parameter,
+-- see above) or the main menu ("main_menu" parameter).  mate-panel must be running
+-- for this to work.
+matePanel :: String -> X ()
+matePanel action = withDisplay $ \dpy -> do
+    let panel = "_MATE_PANEL_ACTION"
     rw <- asks theRoot
-    mate_panel <- getAtom "_MATE_PANEL_ACTION"
-    panel_run  <- getAtom "_MATE_PANEL_ACTION_RUN_DIALOG"
+    mate_panel <- getAtom panel
+    panel_action <- getAtom (panel ++ "_" ++ map toUpper action)
 
     io $ allocaXEvent $ \e -> do
         setEventType e clientMessage
-        setClientMessageEvent e rw mate_panel 32 panel_run 0
+        setClientMessageEvent e rw mate_panel 32 panel_action 0
         sendEvent dpy rw False structureNotifyMask e
         sync dpy False
 
@@ -86,3 +99,12 @@ mateRegister = io $ do
             ,"org.mate.SessionManager.RegisterClient"
             ,"string:xmonad"
             ,"string:"++sessionId]
+
+-- | Display MATE logout dialog. This is the default mod-q action.
+mateLogout :: MonadIO m => m ()
+mateLogout = spawn "mate-session-save --logout-dialog"
+
+-- | Display MATE shutdown dialog. You can override mod-q to invoke this, or bind it
+-- to another key if you prefer.
+mateShutdown :: MonadIO m => m ()
+mateShutdown = spawn "mate-session-save --shutdown-dialog"

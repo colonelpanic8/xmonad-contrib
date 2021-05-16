@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE CPP                #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  XMonad.Actions.ShowText
@@ -22,11 +23,10 @@ module XMonad.Actions.ShowText
     , ShowTextConfig(..)
     ) where
 
-import Control.Monad (when)
 import Data.Map (Map,empty,insert,lookup)
-import Data.Monoid (mempty, All)
 import Prelude hiding (lookup)
 import XMonad
+import XMonad.Prelude (All, fi, when)
 import XMonad.StackSet (current,screen)
 import XMonad.Util.Font (Align(AlignCenter)
                        , initXMF
@@ -36,7 +36,6 @@ import XMonad.Util.Font (Align(AlignCenter)
 import XMonad.Util.Timer (startTimer)
 import XMonad.Util.XUtils (createNewWindow
                          , deleteWindow
-                         , fi
                          , showWindow
                          , paintAndWrite)
 import qualified XMonad.Util.ExtensibleState as ES
@@ -74,7 +73,11 @@ data ShowTextConfig =
 
 instance Default ShowTextConfig where
   def =
+#ifdef XFT
+    STC { st_font = "xft:monospace-20"
+#else
     STC { st_font = "-misc-fixed-*-*-*-*-20-*-*-*-*-*-*-*"
+#endif
         , st_bg   = "black"
         , st_fg   = "white"
     }

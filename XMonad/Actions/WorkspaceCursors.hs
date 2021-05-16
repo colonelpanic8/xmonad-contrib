@@ -48,12 +48,11 @@ import XMonad.Layout.LayoutModifier(ModifiedLayout(..),
                                     LayoutModifier(handleMess, redoLayout))
 import XMonad(Typeable, Message, WorkspaceId, X, XState(windowset),
               fromMessage, sendMessage, windows, gets)
+import XMonad.Util.Stack (reverseS)
 import Control.Applicative (liftA2)
 import Control.Monad((<=<), guard, when)
-import Data.Foldable(Foldable(foldMap), toList)
+import Data.Foldable(toList)
 import Data.Maybe(fromJust, listToMaybe)
-import Data.Monoid(Monoid(mappend, mconcat))
-import Data.Traversable(sequenceA)
 
 -- $usage
 --
@@ -153,8 +152,7 @@ noWrapUp x@(W.Stack _ []   _ ) = x
 
 -- | non-wrapping version of 'W.focusDown''
 noWrapDown ::  W.Stack t -> W.Stack t
-noWrapDown = reverseStack . noWrapUp . reverseStack
-    where reverseStack (W.Stack t ls rs) = W.Stack t rs ls
+noWrapDown = reverseS . noWrapUp . reverseS
 
 focusDepth ::  Cursors t -> Int
 focusDepth (Cons x) = 1 + focusDepth (W.focus x)

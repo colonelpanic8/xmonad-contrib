@@ -29,12 +29,10 @@ module XMonad.Layout.IndependentScreens (
 ) where
 
 -- for the screen stuff
-import Control.Applicative(liftA2)
-import Control.Arrow hiding ((|||))
-import Control.Monad
-import Data.List (nub, genericLength)
+import Control.Arrow ((***))
 import Graphics.X11.Xinerama
 import XMonad
+import XMonad.Prelude
 import XMonad.StackSet hiding (filter, workspaces)
 import XMonad.Hooks.DynamicLog
 
@@ -100,7 +98,7 @@ unmarshallS = fst . unmarshall
 unmarshallW = snd . unmarshall
 
 workspaces' :: XConfig l -> [VirtualWorkspace]
-workspaces' = nub . map (snd . unmarshall) . workspaces
+workspaces' = nub . map unmarshallW . workspaces
 
 withScreens :: ScreenId            -- ^ The number of screens to make workspaces for
             -> [VirtualWorkspace]  -- ^ The desired virtual workspace names
@@ -135,14 +133,8 @@ countScreens = fmap genericLength . liftIO $ openDisplay "" >>= liftA2 (<*) getS
 -- > logHook = let log screen handle = dynamicLogWithPP . marshallPP screen . pp $ handle
 -- >           in log 0 hLeft >> log 1 hRight
 marshallPP :: ScreenId -> PP -> PP
-marshallPP s pp = pp {
-    ppCurrent           = ppCurrent         pp . snd . unmarshall,
-    ppVisible           = ppVisible         pp . snd . unmarshall,
-    ppHidden            = ppHidden          pp . snd . unmarshall,
-    ppHiddenNoWindows   = ppHiddenNoWindows pp . snd . unmarshall,
-    ppUrgent            = ppUrgent          pp . snd . unmarshall,
-    ppSort              = fmap (marshallSort s) (ppSort pp)
-    }
+marshallPP s pp = pp { ppRename = ppRename pp . unmarshallW
+                     , ppSort = fmap (marshallSort s) (ppSort pp) }
 
 -- | Take a pretty-printer and turn it into one that only runs when the current
 -- workspace is one associated with the given screen. The way this works is a

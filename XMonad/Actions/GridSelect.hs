@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, GeneralizedNewtypeDeriving, TypeSynonymInstances, FlexibleInstances, OverlappingInstances #-}
+{-# LANGUAGE ScopedTypeVariables, GeneralizedNewtypeDeriving, TypeSynonymInstances, FlexibleInstances #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  XMonad.Actions.GridSelect
@@ -78,16 +78,14 @@ module XMonad.Actions.GridSelect (
     -- * Types
     TwoDState,
     ) where
-import Data.Maybe
+import Control.Arrow ((***))
 import Data.Bits
-import Data.Char
 import Data.Ord (comparing)
-import Control.Applicative
 import Control.Monad.State
-import Control.Arrow
 import Data.List as L
 import qualified Data.Map as M
 import XMonad hiding (liftX)
+import XMonad.Prelude
 import XMonad.Util.Font
 import XMonad.Prompt (mkUnmanagedWindow)
 import XMonad.StackSet as W
@@ -221,7 +219,7 @@ instance HasColorizer Window where
 instance HasColorizer String where
     defaultColorizer = stringColorizer
 
-instance HasColorizer a where
+instance {-# OVERLAPPABLE #-} HasColorizer a where
     defaultColorizer _ isFg =
         let getColor = if isFg then focusedBorderColor else normalBorderColor
         in asks $ flip (,) "black" . getColor . config
@@ -389,7 +387,7 @@ updateElementsWithColorizer colorizer elementmap = do
 stdHandle :: Event -> TwoD a (Maybe a) -> TwoD a (Maybe a)
 stdHandle (ButtonEvent { ev_event_type = t, ev_x = x, ev_y = y }) contEventloop
     | t == buttonRelease = do
-        s @  TwoDState { td_paneX = px, td_paneY = py,
+        s@TwoDState { td_paneX = px, td_paneY = py,
                          td_gsconfig = (GSConfig ch cw _ _ _ _ _ _ _ _) } <- get
         let gridX = (fi x - (px - cw) `div` 2) `div` cw
             gridY = (fi y - (py - ch) `div` 2) `div` ch

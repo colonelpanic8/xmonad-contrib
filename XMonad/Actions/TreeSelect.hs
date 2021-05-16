@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE MultiWayIf #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  XMonad.Actions.TreeSelect
@@ -39,6 +40,7 @@ module XMonad.Actions.TreeSelect
 
     , TSConfig(..)
     , tsDefaultConfig
+    , def
 
       -- * Navigation
       -- $navigation
@@ -60,16 +62,14 @@ module XMonad.Actions.TreeSelect
     , treeselectAt
     ) where
 
-import Control.Applicative
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.List (find)
-import Data.Maybe
 import Data.Tree
 import Foreign
 import System.IO
 import System.Posix.Process (forkProcess, executeFile)
 import XMonad hiding (liftX)
+import XMonad.Prelude
 import XMonad.StackSet as W
 import XMonad.Util.Font
 import XMonad.Util.NamedWindows
@@ -113,10 +113,10 @@ import Graphics.X11.Xrender
 --
 -- Optionally, if you add 'workspaceHistoryHook' to your 'logHook' you can use the \'o\' and \'i\' keys to select from previously-visited workspaces
 --
--- > xmonad $ defaultConfig { ...
--- >                        , workspaces = toWorkspaces myWorkspaces
--- >                        , logHook = workspaceHistoryHook
--- >                        }
+-- > xmonad $ def { ...
+-- >              , workspaces = toWorkspaces myWorkspaces
+-- >              , logHook = workspaceHistoryHook
+-- >              }
 --
 -- After that you still need to bind buttons to 'treeselectWorkspace' to start selecting a workspaces and moving windows
 --
@@ -131,22 +131,22 @@ import Graphics.X11.Xrender
 -- $config
 -- The selection menu is very configurable, you can change the font, all colors and the sizes of the boxes.
 --
--- The default config defined as 'tsDefaultConfig'
+-- The default config defined as 'def'
 --
--- > tsDefaultConfig = TSConfig { ts_hidechildren = True
--- >                            , ts_background   = 0xc0c0c0c0
--- >                            , ts_font         = "xft:Sans-16"
--- >                            , ts_node         = (0xff000000, 0xff50d0db)
--- >                            , ts_nodealt      = (0xff000000, 0xff10b8d6)
--- >                            , ts_highlight    = (0xffffffff, 0xffff0000)
--- >                            , ts_extra        = 0xff000000
--- >                            , ts_node_width   = 200
--- >                            , ts_node_height  = 30
--- >                            , ts_originX      = 0
--- >                            , ts_originY      = 0
--- >                            , ts_indent       = 80
--- >                            , ts_navigate     = defaultNavigation
--- >                            }
+-- > def = TSConfig { ts_hidechildren = True
+-- >                , ts_background   = 0xc0c0c0c0
+-- >                , ts_font         = "xft:Sans-16"
+-- >                , ts_node         = (0xff000000, 0xff50d0db)
+-- >                , ts_nodealt      = (0xff000000, 0xff10b8d6)
+-- >                , ts_highlight    = (0xffffffff, 0xffff0000)
+-- >                , ts_extra        = 0xff000000
+-- >                , ts_node_width   = 200
+-- >                , ts_node_height  = 30
+-- >                , ts_originX      = 0
+-- >                , ts_originY      = 0
+-- >                , ts_indent       = 80
+-- >                , ts_navigate     = defaultNavigation
+-- >                }
 
 -- $pixel
 --
@@ -160,8 +160,8 @@ import Graphics.X11.Xrender
 -- white       = 0xffffffff
 -- black       = 0xff000000
 -- red         = 0xffff0000
--- blue        = 0xff00ff00
--- green       = 0xff0000ff
+-- green       = 0xff00ff00
+-- blue        = 0xff0000ff
 -- transparent = 0x00000000
 -- @
 
@@ -258,6 +258,7 @@ defaultNavigation = M.fromList
 -- Using nice alternating blue nodes
 tsDefaultConfig :: TSConfig a
 tsDefaultConfig = def
+{-# DEPRECATED tsDefaultConfig "Use def (from Data.Default, and re-exported by XMonad.Actions.TreeSelect) instead." #-}
 
 -- | Tree Node With a name and extra text
 data TSNode a = TSNode { tsn_name  :: String
@@ -523,18 +524,21 @@ moveWith f = do
 -- | wait for keys and run navigation
 navigate :: TreeSelect a (Maybe a)
 navigate = gets tss_display >>= \d -> join . liftIO . allocaXEvent $ \e -> do
-    maskEvent d (exposureMask .|. keyPressMask .|. buttonReleaseMask) e
+    maskEvent d (exposureMask .|. keyPressMask .|. buttonReleaseMask .|. buttonPressMask) e
 
     ev <- getEvent e
 
-    if ev_event_type ev == keyPress
-      then do
-        (ks, _) <- lookupString $ asKeyEvent e
-        return $ do
-            mask <- liftX $ cleanMask (ev_state ev)
-            f <- asks ts_navigate
-            fromMaybe navigate $ M.lookup (mask, fromMaybe xK_VoidSymbol ks) f
-      else return navigate
+    if | ev_event_type ev == keyPress -> do
+           (ks, _) <- lookupString $ asKeyEvent e
+           return $ do
+               mask <- liftX $ cleanMask (ev_state ev)
+               f <- asks ts_navigate
+               fromMaybe navigate $ M.lookup (mask, fromMaybe xK_VoidSymbol ks) f
+       | ev_event_type ev == buttonPress -> do
+           -- See XMonad.Prompt Note [Allow ButtonEvents]
+           allowEvents d replayPointer currentTime
+           return navigate
+       | otherwise -> return navigate
 
 -- | Request a full redraw
 redraw :: TreeSelect a ()
@@ -650,8 +654,16 @@ drawStringXMF display window visual colormap gc font col x y text = case font of
 --
 -- Note that it uses short to represent its components
 fromARGB :: Pixel -> XRenderColor
-fromARGB x = XRenderColor (fromIntegral $ 0xff00 .&. shiftR x 8)  -- red
-                          (fromIntegral $ 0xff00 .&. x)           -- green
-                          (fromIntegral $ 0xff00 .&. shiftL x 8)  -- blue
-                          (fromIntegral $ 0xff00 .&. shiftR x 16) -- alpha
+fromARGB x =
+#if MIN_VERSION_X11_xft(0, 3, 3)
+    XRenderColor r g b a
+#else
+    -- swapped green/blue as a workaround for the faulty Storable instance in X11-xft < 0.3.3
+    XRenderColor r b g a
+#endif
+  where
+    r = fromIntegral $ 0xff00 .&. shiftR x 8
+    g = fromIntegral $ 0xff00 .&. x
+    b = fromIntegral $ 0xff00 .&. shiftL x 8
+    a = fromIntegral $ 0xff00 .&. shiftR x 16
 #endif
