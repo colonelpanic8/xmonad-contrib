@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  XMonad.Actions.DynamicWorkspaces
@@ -86,8 +84,8 @@ type WorkspaceIndex  = Int
 
 -- | Internal dynamic project state that stores a mapping between
 --   workspace indexes and workspace tags.
-data DynamicWorkspaceState = DynamicWorkspaceState {workspaceIndexMap :: Map.Map WorkspaceIndex WorkspaceTag}
-  deriving (Typeable, Read, Show)
+newtype DynamicWorkspaceState = DynamicWorkspaceState {workspaceIndexMap :: Map.Map WorkspaceIndex WorkspaceTag}
+  deriving (Read, Show)
 
 instance ExtensionClass DynamicWorkspaceState where
   initialValue = DynamicWorkspaceState Map.empty
@@ -125,14 +123,14 @@ renameWorkspace conf = workspacePrompt conf renameWorkspaceByName
 
 renameWorkspaceByName :: String -> X ()
 renameWorkspaceByName w = do old  <- gets (currentTag . windowset)
-			     windows $ \s -> let sett wk = wk { tag = w }
-						 setscr scr = scr { workspace = sett $ workspace scr }
-						 sets q = q { current = setscr $ current q }
+                             windows $ \s -> let sett wk = wk { tag = w }
+                                                 setscr scr = scr { workspace = sett $ workspace scr }
+                                                 sets q = q { current = setscr $ current q }
                                              in sets $ removeWorkspace' w s
-			     updateIndexMap old w
-  where updateIndexMap old new = do
+                             updateIndexMap old w
+  where updateIndexMap oldIM newIM = do
           wmap <- XS.gets workspaceIndexMap
-          XS.modify $ \s -> s {workspaceIndexMap = Map.map (\t -> if t == old then new else t) wmap}
+          XS.modify $ \s -> s {workspaceIndexMap = Map.map (\t -> if t == oldIM then newIM else t) wmap}
 
 toNthWorkspace :: (String -> X ()) -> Int -> X ()
 toNthWorkspace job wnum = do sort <- getSortByIndex
@@ -239,14 +237,14 @@ isEmpty t = do wsl <- gets $ workspaces . windowset
                return $ maybe True (isNothing . stack) mws
 
 addHiddenWorkspace' :: (Workspace i l a -> [Workspace i l a] -> [Workspace i l a]) -> i -> l -> StackSet i l a sid sd -> StackSet i l a sid sd
-addHiddenWorkspace' add newtag l s@(StackSet { hidden = ws }) = s { hidden = add (Workspace newtag l Nothing) ws }
+addHiddenWorkspace' add newtag l s@StackSet{ hidden = ws } = s { hidden = add (Workspace newtag l Nothing) ws }
 
 -- | Remove the hidden workspace with the given tag from the StackSet, if
 --   it exists. All the windows in that workspace are moved to the current
 --   workspace.
 removeWorkspace' :: (Eq i) => i -> StackSet i l a sid sd -> StackSet i l a sid sd
-removeWorkspace' torem s@(StackSet { current = scr@(Screen { workspace = wc })
-                                   , hidden = hs })
+removeWorkspace' torem s@StackSet{ current = scr@Screen { workspace = wc }
+                                 , hidden  = hs }
     = let (xs, ys) = break ((== torem) . tag) hs
       in removeWorkspace'' xs ys
    where meld Nothing Nothing = Nothing

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, DeriveDataTypeable, TypeSynonymInstances, PatternGuards #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, PatternGuards #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -107,7 +107,6 @@ data GapMessage = ToggleGaps              -- ^ Toggle all gaps.
                 | IncGap !Int !Direction2D    -- ^ Increase a gap by a certain number of pixels.
                 | DecGap !Int !Direction2D    -- ^ Decrease a gap.
                 | ModifyGaps (GapSpec -> GapSpec) -- ^ Modify arbitrarily.
-  deriving (Typeable)
 
 instance Message GapMessage
 
@@ -177,7 +176,7 @@ toggleGaps _    _  = []
 
 toggleGap :: GapSpec -> [Direction2D] -> Direction2D -> [Direction2D]
 toggleGap conf cur d | d `elem` cur            = delete d cur
-                     | d `elem` (map fst conf) = d:cur
+                     | d `elem` map fst conf = d:cur
                      | otherwise               = cur
 
 -- | Add togglable manual gaps to a layout.

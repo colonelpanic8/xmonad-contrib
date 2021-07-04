@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, ExistentialQuantification, Rank2Types, MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, FlexibleContexts, PatternGuards #-}
+{-# LANGUAGE ExistentialQuantification, Rank2Types, FunctionalDependencies, FlexibleInstances, FlexibleContexts, PatternGuards #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -88,11 +88,11 @@ import Data.Typeable
 -- which is an instance of the 'Transformer' class.  For example, here
 -- is the definition of @MIRROR@:
 --
--- > data MIRROR = MIRROR deriving (Read, Show, Eq, Typeable)
+-- > data MIRROR = MIRROR deriving (Read, Show, Eq)
 -- > instance Transformer MIRROR Window where
 -- >     transform _ x k = k (Mirror x) (\(Mirror x') -> x')
 --
--- Note, you need to put @{-\# LANGUAGE DeriveDataTypeable,
+-- Note, you need to put @{-\# LANGUAGE
 -- TypeSynonymInstances, MultiParamTypeClasses \#-}@ at the
 -- beginning of your file.
 
@@ -115,7 +115,6 @@ transform' t (EL l det) = transform t l (\l' det' -> EL l' (det . det'))
 
 -- | Toggle the specified layout transformer.
 data Toggle a = forall t. (Transformer t a) => Toggle t
-    deriving (Typeable)
 
 instance (Typeable a) => Message (Toggle a)
 
@@ -220,7 +219,7 @@ instance (Typeable a, Show ts, Typeable ts, HList ts a, LayoutClass l a) => Layo
                       return Nothing
         | otherwise
             = case currLayout mt of
-                EL l det -> (fmap (\x -> mt { currLayout = EL x det })) <$>
+                EL l det -> fmap (\x -> mt { currLayout = EL x det }) <$>
                     handleMessage l m
 
 

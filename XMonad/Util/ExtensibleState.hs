@@ -40,10 +40,9 @@ import XMonad.Prelude (fromMaybe)
 -- and make it an instance of ExtensionClass. You can then use
 -- the functions from this module for storing and retrieving your data:
 --
--- > {-# LANGUAGE DeriveDataTypeable #-}
 -- > import qualified XMonad.Util.ExtensibleState as XS
 -- >
--- > data ListStorage = ListStorage [Integer] deriving Typeable
+-- > data ListStorage = ListStorage [Integer]
 -- > instance ExtensionClass ListStorage where
 -- >   initialValue = ListStorage []
 -- >
@@ -61,7 +60,7 @@ import XMonad.Prelude (fromMaybe)
 -- To make your data persistent between restarts, the data type needs to be
 -- an instance of Read and Show and the instance declaration has to be changed:
 --
--- > data ListStorage = ListStorage [Integer] deriving (Typeable,Read,Show)
+-- > data ListStorage = ListStorage [Integer] deriving (Read,Show)
 -- >
 -- > instance ExtensionClass ListStorage where
 -- >   initialValue = ListStorage []
@@ -99,7 +98,7 @@ put v = modifyStateExts . M.insert (show . typeOf $ v) . Right . extensionType $
 -- | Try to retrieve a value of the requested type, return an initial value if there is no such value.
 get :: (ExtensionClass a, XLike m) => m a
 get = getState' undefined -- `trick' to avoid needing -XScopedTypeVariables
-  where toValue val = maybe initialValue id $ cast val
+  where toValue val = fromMaybe initialValue $ cast val
         getState' :: (ExtensionClass a, XLike m) => a -> m a
         getState' k = do
           v <- State.gets $ M.lookup (show . typeOf $ k) . extensibleState
@@ -110,7 +109,7 @@ get = getState' undefined -- `trick' to avoid needing -XScopedTypeVariables
                 let val = fromMaybe initialValue $ cast =<< safeRead str `asTypeOf` Just x
                 put (val `asTypeOf` k)
                 return val
-            _ -> return $ initialValue
+            _ -> return initialValue
         safeRead str = case reads str of
                          [(x,"")] -> Just x
                          _ -> Nothing

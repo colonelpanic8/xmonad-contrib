@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, PatternGuards, TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, PatternGuards #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -103,13 +103,13 @@ simpleTabbedBottomAlways :: ModifiedLayout (Decoration TabbedDecoration DefaultS
 simpleTabbedBottomAlways = tabbedBottomAlways shrinkText def
 
 -- | A side-tabbed layout with the default xmonad Theme.
-simpleTabbedLeft, simpleTabbedRight :: ModifiedLayout (Decoration TabbedDecoration DefaultShrinker) 
+simpleTabbedLeft, simpleTabbedRight :: ModifiedLayout (Decoration TabbedDecoration DefaultShrinker)
                                         Simplest Window
 simpleTabbedLeft = tabbedLeft shrinkText def
 simpleTabbedRight = tabbedRight shrinkText def
 
 -- | A side-tabbed layout with the default xmonad Theme.
-simpleTabbedLeftAlways, simpleTabbedRightAlways :: ModifiedLayout (Decoration TabbedDecoration DefaultShrinker) 
+simpleTabbedLeftAlways, simpleTabbedRightAlways :: ModifiedLayout (Decoration TabbedDecoration DefaultShrinker)
                                                   Simplest Window
 simpleTabbedLeftAlways = tabbedLeftAlways shrinkText def
 simpleTabbedRightAlways = tabbedRightAlways shrinkText def
@@ -186,7 +186,7 @@ addTabsLeftAlways = createTabs Always L
 createTabs                ::(Eq a, LayoutClass l a, Shrinker s) => TabbarShown -> Direction2D -> s
                           -> Theme -> l a -> ModifiedLayout (Decoration TabbedDecoration s) l a
 
-createTabs sh loc tx th l = decoration tx th (Tabbed loc sh) l
+createTabs sh loc tx th = decoration tx th (Tabbed loc sh)
 
 data TabbarShown = Always | WhenPlural deriving (Read, Show, Eq)
 
@@ -208,7 +208,7 @@ instance Eq a => DecorationStyle TabbedDecoration a where
     decorationEventHook _ _ _ = return ()
 
     pureDecoration (Tabbed lc sh) wt ht _ s wrs (w,r@(Rectangle x y wh hh))
-        = if ((sh == Always && numWindows > 0) || numWindows > 1)
+        = if (sh == Always && numWindows > 0) || numWindows > 1
           then Just $ case lc of
                         U -> upperTab
                         D -> lowerTab
@@ -219,15 +219,13 @@ instance Eq a => DecorationStyle TabbedDecoration a where
               loc k h i = k + fi ((h * fi i) `div` max 1 (fi $ length ws))
               esize k h = fi $ maybe k (\i -> loc k h (i+1) - loc k h i) $ w `elemIndex` ws
               wid = esize x wh
-              hid = esize y hh
               n k h = maybe k (loc k h) $ w `elemIndex` ws
               nx = n x wh
-              ny = n y hh
               upperTab = Rectangle nx  y wid (fi ht)
               lowerTab = Rectangle nx (y + fi (hh - ht)) wid (fi ht)
-              fixHeightLoc i = y + fi (((fi ht) * fi i)) 
+              fixHeightLoc i = y + fi ht * fi i
               fixHeightTab k = Rectangle k
-                (maybe y (fixHeightLoc)
+                (maybe y fixHeightLoc
                  $ w `elemIndex` ws) (fi wt) (fi ht)
               rightTab = fixHeightTab (x + fi (wh - wt))
               leftTab = fixHeightTab x

@@ -1,5 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, PatternGuards, FlexibleInstances, MultiParamTypeClasses, CPP #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternGuards, FlexibleInstances, MultiParamTypeClasses, CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module       : XMonad.Hooks.ManageDocks
@@ -91,7 +90,7 @@ docks c = c { startupHook     = docksStartupHook <+> startupHook c
 
 type WindowStruts = M.Map Window [Strut]
 
-data UpdateDocks = UpdateDocks deriving Typeable
+data UpdateDocks = UpdateDocks
 instance Message UpdateDocks
 
 refreshDocks :: X ()
@@ -99,7 +98,7 @@ refreshDocks = sendMessage UpdateDocks
 
 -- Nothing means cache hasn't been initialized yet
 newtype StrutCache = StrutCache { fromStrutCache :: Maybe WindowStruts }
-    deriving (Eq, Typeable)
+    deriving Eq
 
 instance ExtensionClass StrutCache where
     initialValue = StrutCache Nothing
@@ -142,7 +141,8 @@ manageDocks = checkDock --> (doIgnore <+> doRequestDockEvents)
 -- (Only if not already a client to avoid overriding 'clientMask')
 requestDockEvents :: Window -> X ()
 requestDockEvents w = whenX (not <$> isClient w) $ withDisplay $ \dpy ->
-    io $ selectInput dpy w (propertyChangeMask .|. structureNotifyMask)
+    withWindowAttributes dpy w $ \attrs -> io $ selectInput dpy w $
+        wa_your_event_mask attrs .|. propertyChangeMask .|. structureNotifyMask
 
 -- | Checks if a window is a DOCK or DESKTOP window
 checkDock :: Query Bool
@@ -151,30 +151,30 @@ checkDock = ask >>= \w -> liftX $ do
     desk <- getAtom "_NET_WM_WINDOW_TYPE_DESKTOP"
     mbr <- getProp32s "_NET_WM_WINDOW_TYPE" w
     case mbr of
-        Just rs -> return $ any (`elem` [dock,desk]) (map fromIntegral rs)
+        Just rs -> return $ any ((`elem` [dock,desk]) . fromIntegral) rs
         _       -> return False
 
 -- | Whenever a new dock appears, refresh the layout immediately to avoid the
 -- new dock.
 docksEventHook :: Event -> X All
-docksEventHook (MapNotifyEvent { ev_window = w }) = do
+docksEventHook MapNotifyEvent{ ev_window = w } = do
     whenX (runQuery checkDock w <&&> (not <$> isClient w)) $
         whenX (updateStrutCache w) refreshDocks
     return (All True)
-docksEventHook (PropertyEvent { ev_window = w
-                              , ev_atom = a }) = do
+docksEventHook PropertyEvent{ ev_window = w
+                            , ev_atom = a } = do
     nws <- getAtom "_NET_WM_STRUT"
     nwsp <- getAtom "_NET_WM_STRUT_PARTIAL"
     when (a == nws || a == nwsp) $
         whenX (updateStrutCache w) refreshDocks
     return (All True)
-docksEventHook (DestroyWindowEvent {ev_window = w}) = do
+docksEventHook DestroyWindowEvent{ ev_window = w } = do
     whenX (deleteFromStrutCache w) refreshDocks
     return (All True)
 docksEventHook _ = return (All True)
 
 docksStartupHook :: X ()
-docksStartupHook = void $ getStrutCache
+docksStartupHook = void getStrutCache
 
 -- | Gets the STRUT config, if present, in xmonad gap order
 getStrut :: Window -> X [Strut]
@@ -221,13 +221,13 @@ avoidStrutsOn :: LayoutClass l a =>
               -> ModifiedLayout AvoidStruts l a
 avoidStrutsOn ss = ModifiedLayout $ AvoidStruts (S.fromList ss)
 
-data AvoidStruts a = AvoidStruts (S.Set Direction2D) deriving ( Read, Show )
+newtype AvoidStruts a = AvoidStruts (S.Set Direction2D) deriving ( Read, Show )
 
 -- | Message type which can be sent to an 'AvoidStruts' layout
 --   modifier to alter its behavior.
 data ToggleStruts = ToggleStruts
                   | ToggleStrut Direction2D
-  deriving (Read,Show,Typeable)
+  deriving (Read,Show)
 
 instance Message ToggleStruts
 
@@ -253,7 +253,7 @@ instance Message ToggleStruts
 data SetStruts = SetStruts { addedStruts   :: [Direction2D]
                            , removedStruts :: [Direction2D] -- ^ These are removed from the currently set struts before 'addedStruts' are added.
                            }
-  deriving (Read,Show,Typeable)
+  deriving (Read,Show)
 
 instance Message SetStruts
 

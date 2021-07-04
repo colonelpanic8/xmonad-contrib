@@ -64,13 +64,14 @@ type StateFull = FocusTracking Full
 
 -- | A pattern synonym for the primary use case of the @FocusTracking@
 --   transformer; using @Full@.
+pattern StateFull :: FocusTracking Full a
 pattern StateFull = FocusTracking Nothing Full
 
 instance LayoutClass l Window => LayoutClass (FocusTracking l) Window where
 
   description (FocusTracking _ child)
-    | (chDesc == "Full")  = "StateFull"
-    | (' ' `elem` chDesc) = "FocusTracking (" ++ chDesc ++ ")"
+    | chDesc == "Full"  = "StateFull"
+    | ' ' `elem` chDesc = "FocusTracking (" ++ chDesc ++ ")"
     | otherwise           = "FocusTracking " ++ chDesc
     where chDesc = description child
 

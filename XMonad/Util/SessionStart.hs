@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  XMonad.Util.SessionStart
@@ -33,13 +31,13 @@ import qualified XMonad.Util.ExtensibleState as XS
 -- Add 'setSessionStarted' at the end of the 'startupHook' to set the
 -- flag.
 --
--- To do something only when the session is started up, use 
+-- To do something only when the session is started up, use
 -- 'isSessionStart' to query or wrap it in 'doOnce' to only do it when
 -- the flag isn't set.
 -- ---------------------------------------------------------------------
 
-data SessionStart = SessionStart { unSessionStart :: Bool }
-    deriving (Read, Show, Typeable)
+newtype SessionStart = SessionStart { unSessionStart :: Bool }
+    deriving (Read, Show)
 
 instance ExtensionClass SessionStart where
     initialValue = SessionStart True

@@ -1,4 +1,3 @@
- {-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  XMonad.Actions.KeyRemap
@@ -33,7 +32,7 @@ import XMonad.Util.Paste
 import qualified XMonad.Util.ExtensibleState as XS
 
 
-data KeymapTable = KeymapTable [((KeyMask, KeySym), (KeyMask, KeySym))] deriving (Typeable, Show)
+newtype KeymapTable = KeymapTable [((KeyMask, KeySym), (KeyMask, KeySym))] deriving (Show)
 
 instance ExtensionClass KeymapTable where
    initialValue = KeymapTable []
@@ -124,8 +123,8 @@ extractKeyMapping (KeymapTable table) mask sym =
 buildKeyRemapBindings :: [KeymapTable] -> [((KeyMask, KeySym), X ())]
 buildKeyRemapBindings keyremaps =
   [((mask, sym), doKeyRemap mask sym) | (mask, sym) <- bindings]
-  where mappings = concat (map (\(KeymapTable table) -> table) keyremaps)
-        bindings = nub (map (\binding -> fst binding) mappings)
+  where mappings = concatMap (\(KeymapTable table) -> table) keyremaps
+        bindings = nub (map fst mappings)
 
 
 -- Here come the Keymappings
@@ -137,7 +136,7 @@ emptyKeyRemap = KeymapTable []
 dvorakProgrammerKeyRemap :: KeymapTable
 dvorakProgrammerKeyRemap =
   KeymapTable [((charToMask maskFrom, from), (charToMask maskTo, to)) |
-               (maskFrom, from, maskTo, to) <- (zip4 layoutUsShift layoutUsKey layoutDvorakShift layoutDvorakKey)]
+               (maskFrom, from, maskTo, to) <- zip4 layoutUsShift layoutUsKey layoutDvorakShift layoutDvorakKey]
   where
 
     layoutUs    = map (fromIntegral . fromEnum) "`1234567890-=qwertyuiop[]\\asdfghjkl;'zxcvbnm,./~!@#$%^&*()_+QWERTYUIOP{}|ASDFGHJKL:\"ZXCVBNM<>?"  :: [KeySym]

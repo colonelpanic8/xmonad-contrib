@@ -39,7 +39,7 @@ import XMonad.Prelude (ap)
 -- the maximum number of dishes allowed within a stack.
 --
 -- > MultiDishes x 1 y
--- is equivalent to 
+-- is equivalent to
 -- > Dishes x y
 --
 -- The stack with the fewest dishes is always on top, so 4 windows
@@ -69,7 +69,7 @@ multiDishes h s nmaster dishesPerStack n = if n <= nmaster
                         else ws
  where
     (filledDishStackCount, remainder) =
-      (n - nmaster) `quotRem` (max 1 dishesPerStack)
+      (n - nmaster) `quotRem` max 1 dishesPerStack
 
     (firstDepth, dishStackCount) =
       if remainder == 0 then
@@ -78,7 +78,7 @@ multiDishes h s nmaster dishesPerStack n = if n <= nmaster
         (remainder, filledDishStackCount + 1)
 
     (masterRect, dishesRect) =
-      splitVerticallyBy (1 - (fromIntegral dishStackCount) * h) s
+      splitVerticallyBy (1 - fromIntegral dishStackCount * h) s
 
     dishStackRects =
       splitVertically dishStackCount dishesRect

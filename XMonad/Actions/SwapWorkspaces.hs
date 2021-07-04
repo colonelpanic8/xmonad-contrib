@@ -53,12 +53,13 @@ swapWithCurrent t s = swapWorkspaces t (currentTag s) s
 -- | Say @swapTo Next@ or @swapTo Prev@ to move your current workspace.
 -- This is an @X ()@ so can be hooked up to your keybindings directly.
 swapTo :: Direction1D -> X ()
-swapTo dir = findWorkspace getSortByIndex dir AnyWS 1 >>= windows . swapWithCurrent
+swapTo dir = findWorkspace getSortByIndex dir anyWS 1 >>= windows . swapWithCurrent
 
 -- | Takes two workspace tags and an existing XMonad.StackSet and returns a new
 --   one with the two corresponding workspaces' tags swapped.
 swapWorkspaces :: Eq i => i -> i -> StackSet i l a s sd -> StackSet i l a s sd
 swapWorkspaces t1 t2 = mapWorkspace swap
-    where swap w = if      tag w == t1 then w { tag = t2 }
-                   else if tag w == t2 then w { tag = t1 }
-                   else w
+    where swap w
+            | tag w == t1 = w { tag = t2 }
+            | tag w == t2 = w { tag = t1 }
+            | otherwise = w

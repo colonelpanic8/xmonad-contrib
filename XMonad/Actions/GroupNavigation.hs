@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-
 ----------------------------------------------------------------------
 -- |
 -- Module      : XMonad.Actions.GroupNavigation
@@ -157,7 +155,7 @@ orderedWorkspaceList ss wsids = rotateTo isCurWS wspcs'
 -- The state extension that holds the history information
 data HistoryDB = HistoryDB (Maybe Window) -- currently focused window
                            (Seq Window)   -- previously focused windows
-               deriving (Read, Show, Typeable)
+               deriving (Read, Show)
 
 instance ExtensionClass HistoryDB where
 
@@ -224,5 +222,5 @@ isOnAnyVisibleWS = do
   ws <- liftX $ gets windowset
   let allVisible = concat $ maybe [] SS.integrate . SS.stack . SS.workspace <$> SS.current ws:SS.visible ws
       visibleWs = w `elem` allVisible
-      unfocused = maybe True (w /=) $ SS.peek ws
+      unfocused = Just w /= SS.peek ws
   return $ visibleWs && unfocused

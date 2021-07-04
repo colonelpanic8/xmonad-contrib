@@ -36,7 +36,7 @@ module XMonad.Hooks.StatusBar.PP (
 
     -- * Formatting utilities
     wrap, pad, trim, shorten, shorten', shortenLeft, shortenLeft',
-    xmobarColor, xmobarAction, xmobarBorder,
+    xmobarColor, xmobarFont, xmobarAction, xmobarBorder,
     xmobarRaw, xmobarStrip, xmobarStripTags,
     dzenColor, dzenEscape, dzenStrip, filterOutWsPP,
 
@@ -128,7 +128,9 @@ data PP = PP { ppCurrent :: WorkspaceId -> String
                -- output it.  Can be used to specify an alternative
                -- output method (e.g. write to a pipe instead of
                -- stdout), and\/or to perform some last-minute
-               -- formatting.
+               -- formatting. Note that this is only used by
+               -- 'dynamicLogWithPP'; it won't work with 'dynamicLogString' or
+               -- "XMonad.Hooks.StatusBar".
              }
 
 -- | The default pretty printing options:
@@ -179,7 +181,7 @@ dynamicLogString pp = do
     let ws = pprWindowSet sort' urgents pp winset
 
     -- run extra loggers, ignoring any that generate errors.
-    extras <- mapM (`catchX` return Nothing) $ ppExtras pp
+    extras <- mapM (userCodeDef Nothing) $ ppExtras pp
 
     -- window title
     wt <- maybe (pure "") (fmap show . getName) . S.peek $ winset
@@ -285,6 +287,12 @@ dzenStrip = strip [] where
       | '^' == head x       = strip keep (drop 1 . dropWhile (/= ')') $ x)
       | otherwise           = let (good,x') = span (/= '^') x
                               in strip (keep ++ good) x'
+
+-- | Use xmobar escape codes to output a string with the font at the given index
+xmobarFont :: Int     -- ^ index: index of the font to use (0: standard font)
+           -> String  -- ^ output string
+           -> String
+xmobarFont index = wrap ("<fn=" ++ show index ++ ">") "</fn>"
 
 -- | Use xmobar escape codes to output a string with given foreground
 --   and background colors.

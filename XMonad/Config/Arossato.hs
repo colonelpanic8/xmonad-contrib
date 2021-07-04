@@ -22,7 +22,7 @@ module XMonad.Config.Arossato
 
 import qualified Data.Map as M
 
-import XMonad hiding ( (|||) )
+import XMonad
 import qualified XMonad.StackSet as W
 
 import XMonad.Actions.CycleWS
@@ -30,7 +30,6 @@ import XMonad.Hooks.DynamicLog hiding (xmobar)
 import XMonad.Hooks.ManageDocks
 import XMonad.Hooks.ServerMode
 import XMonad.Layout.Accordion
-import XMonad.Layout.LayoutCombinators
 import XMonad.Layout.Magnifier
 import XMonad.Layout.NoBorders
 import XMonad.Layout.SimpleFloat
@@ -147,8 +146,8 @@ arossatoConfig = do
           , ((modMask x              , xK_F3    ), shellPrompt       def                 )
           , ((modMask x              , xK_F4    ), sshPrompt         def                 )
           , ((modMask x              , xK_F5    ), themePrompt       def                 )
-          , ((modMask x              , xK_F6    ), windowPromptGoto  def                 )
-          , ((modMask x              , xK_F7    ), windowPromptBring def                 )
+          , ((modMask x              , xK_F6    ), windowPrompt def Goto  allWindows     )
+          , ((modMask x              , xK_F7    ), windowPrompt def Bring allWindows     )
           , ((modMask x              , xK_comma ), prevWS                                )
           , ((modMask x              , xK_period), nextWS                                )
           , ((modMask x              , xK_Right ), windows W.focusDown                   )

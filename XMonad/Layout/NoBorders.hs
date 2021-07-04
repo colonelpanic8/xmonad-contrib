@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances, PatternGuards, DeriveDataTypeable #-}
+{-# LANGUAGE PatternGuards #-}
+{-# OPTIONS_GHC -Wno-dodgy-imports #-} -- singleton in Data.List since base 4.15
 
 -----------------------------------------------------------------------------
 -- |
@@ -34,7 +35,7 @@ module XMonad.Layout.NoBorders ( -- * Usage
                                ) where
 
 import           XMonad
-import           XMonad.Prelude
+import           XMonad.Prelude hiding (singleton)
 import           XMonad.Layout.LayoutModifier
 import qualified XMonad.StackSet                as W
 import qualified XMonad.Util.Rectangle          as R
@@ -121,7 +122,6 @@ data BorderMessage
     | ResetBorder Window
         -- ^ Reset the effects of any 'HasBorder' messages on the specified
         -- window.
-    deriving (Typeable)
 
 instance Message BorderMessage
 
@@ -143,7 +143,7 @@ data ConfigurableBorder p w = ConfigurableBorder
 -- | Only necessary with 'BorderMessage' - remove non-existent windows from the
 -- 'alwaysHidden' or 'neverHidden' lists.
 borderEventHook :: Event -> X All
-borderEventHook (DestroyWindowEvent { ev_window = w }) = do
+borderEventHook DestroyWindowEvent{ ev_window = w } = do
     broadcastMessage $ ResetBorder w
     return $ All True
 borderEventHook _ = return $ All True
@@ -152,7 +152,7 @@ instance (Read p, Show p, SetsAmbiguous p) => LayoutModifier (ConfigurableBorder
     unhook (ConfigurableBorder _ _ _ ch) = asks (borderWidth . config) >>= setBorders ch
 
     redoLayout cb@(ConfigurableBorder gh ah nh ch) lr mst wrs = do
-        let gh' wset = let lh = (hiddens gh wset lr mst wrs)
+        let gh' wset = let lh = hiddens gh wset lr mst wrs
                        in  return $ (ah `union` lh) \\ nh
         ch' <- withWindowSet gh'
         asks (borderWidth . config) >>= setBorders (ch \\ ch')
@@ -163,7 +163,7 @@ instance (Read p, Show p, SetsAmbiguous p) => LayoutModifier (ConfigurableBorder
         | Just (HasBorder b w) <- fromMessage m =
             let consNewIf l True  = if w `elem` l then Nothing else Just (w:l)
                 consNewIf l False = Just l
-            in  (ConfigurableBorder gh) <$> consNewIf ah (not b)
+            in  ConfigurableBorder gh <$> consNewIf ah (not b)
                                         <*> consNewIf nh b
                                         <*> pure ch
         | Just (ResetBorder w) <- fromMessage m =

@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE DeriveDataTypeable     #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
@@ -349,7 +348,7 @@ instance Default Focus where
                         }
 
 newtype FocusLock   = FocusLock {getFocusLock :: Bool}
-  deriving (Show, Typeable)
+  deriving (Show)
 instance ExtensionClass FocusLock where
     initialValue    = FocusLock False
 
@@ -441,7 +440,7 @@ focusedCur' m       = asks currentWorkspace >>= \i -> focusedOn' i m
 
 -- | Does new window appear at particular workspace?
 newOn :: WorkspaceId -> FocusQuery Bool
-newOn i             = (i ==) <$> asks newWorkspace
+newOn i             = asks ((i ==) . newWorkspace)
 -- | Does new window appear at current workspace?
 newOnCur :: FocusQuery Bool
 newOnCur            = asks currentWorkspace >>= newOn

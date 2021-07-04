@@ -27,6 +27,9 @@
       constraint (was: `IO`), due to changes in how the xmonad core handles XDG
       directories.
 
+    - The prompt window now sets a `WM_CLASS` property.  This allows
+      other applications, like compositors, to properly match on it.
+
   * `XMonad.Hooks.EwmhDesktops`
 
     - It is no longer recommended to use `fullscreenEventHook` directly.
@@ -88,6 +91,34 @@
       now recommended to directly use `XMonad.Hooks.WorkspaceHistory`
       instead.
 
+    - Added `TopicItem`, as well as the helper functions `topicNames`,
+      `tiActions`, `tiDirs`, `noAction`, and `inHome` for a more
+      convenient specification of topics.
+
+  * `XMonad.Actions.CycleRecentWS`
+
+    - Changed the signature of `recentWS` to return a `[WorkspaceId]`
+      instead of a `[WindowSet]`, while `cycleWindowSets` and
+      `toggleWindowSets` now take a function `WindowSet ->
+      [WorkspaceId]` instead of one to `[WindowSet]` as their first
+      argument.  This fixes the interplay between this module and any
+      layout that stores state.
+
+  * `XMonad.Layout.LayoutCombinators`
+
+    - Moved the alternative `(|||)` function and `JumpToLayout` to the
+      xmonad core.  They are re-exported by the module, but do not add any
+      new functionality.  `NewSelect` now exists as a deprecated type
+      alias to `Choose`.
+
+    - Removed the `Wrap` and `NextLayoutNoWrap` data constructors.
+
+  - `XMonad.Actions.CycleWS`
+
+    - Deprecated `EmptyWS`, `HiddenWS`, `NonEmptyWS`, `HiddenNonEmptyWS`,
+      `HiddenEmptyWS`, `AnyWS` and `WSTagGroup`.
+
+
 ### New Modules
 
   * `XMonad.Hooks.StatusBar.PP`
@@ -107,12 +138,12 @@
     - Added `filterOutWsPP` for filtering out certain workspaces from being
       displayed.
 
-    - Added `xmobarBorder` function to create borders around strings.
+    - Added `xmobarBorder` for creating borders around strings and
+      `xmobarFont` for selecting an alternative font.
 
     - Added `ppRename` to `PP`, which makes it possible for extensions like
       `workspaceNamesPP`, `marshallPP` and/or `clickablePP` to compose
       intuitively.
-
 
   * `XMonad.Hooks.StatusBar`
 
@@ -227,13 +258,43 @@
     additional capability to schedule/deadline a task, or use the
     primary selection as the contents of the note.
 
+  * `XMonad.Util.ExtensibleConf`
+
+    Extensible and composable configuration for contrib modules. Allows
+    contrib modules to store custom configuration values inside `XConfig`.
+    This lets them create custom hooks, ensure they hook into xmonad core only
+    once, and possibly more.
+
+  * `XMonad.Hooks.Rescreen`
+
+    Custom hooks for screen (xrandr) configuration changes. These can be used
+    to restart/reposition status bars or systrays automatically after xrandr,
+    as well as to actually invoke xrandr or autorandr when an output is
+    (dis)connected.
+
+  * `XMonad.Actions.EasyMotion`
+
+    A new module that allows selection of visible screens using a key chord.
+    Inspired by [vim-easymotion](https://github.com/easymotion/vim-easymotion). See the animation
+    in the vim-easymotion repo to get some idea of the functionality of this
+    EasyMotion module.
+
 ### Bug Fixes and Minor Changes
 
   * Add support for GHC 9.0.1.
 
+  * `XMonad.Actions.DynamicWorkspaceGroups`
+
+    - Add support for `XMonad.Actions.TopicSpace` through `viewTopicGroup` and
+      `promptTopicGroupView`.
+
   * `XMonad.Actions.TreeSelect`
 
     - Fix swapped green/blue in foreground when using Xft.
+
+    - The spawned tree-select window now sets a `WM_CLASS` property.
+      This allows other applications, like compositors, to properly
+      match on it.
 
   * `XMonad.Layout.Fullscreen`
 
@@ -325,6 +386,9 @@
        `XMonad.Hooks.DynamicLog.filterOutWsPP` instead.
 
      - Exported the `scratchpadWorkspaceTag`.
+
+     - Added a new logHook `nsHideOnFocusLoss` for hiding scratchpads
+       when they lose focus.
 
   * `XMonad.Prompt.Window`
 
@@ -429,6 +493,8 @@
 
     - Added `focusWindow` and `focusNth` which don't refresh (and thus
       possibly flicker) when they happen to be a no-op.
+
+    - Added `shiftWin` as a refresh tracking version of `W.shiftWin`.
 
   * Several `LayoutClass` instances now have an additional `Typeable`
     constraint which may break some advanced configs. The upside is that we
@@ -550,6 +616,49 @@
   * `XMonad.Layout.SubLayouts`
 
     - Floating windows are no longer moved to the end of the window stack.
+
+  * `XMonad.Layout.BinarySpacePartition`
+
+    - Add the ability to increase/decrease the window size by a custom
+      rational number. E.g: `sendMessage $ ExpandTowardsBy L 0.02`
+
+  * `XMonad.Layout.Decoration`
+
+    - The decoration window now sets a `WM_CLASS` property.  This allows
+      other applications, like compositors, to properly match on it.
+
+  * `XMonad.Layout.IndependentScreens`
+
+    - Fixed a bug where `marshallPP` always sorted workspace names
+      lexically.  This changes the default behaviour of `marshallPP`—the
+      given `ppSort` now operates in the _physical_ workspace names.
+      The documentation of `marshallSort` contains an example of how to
+      get the old behaviour, where `ppSort` operates in virtual names,
+      back.
+
+    - Added `workspacesOn` for filtering workspaces on the current screen.
+
+    - Added `withScreen` to specify names for a given single screen.
+
+    - Added new aliases `PhysicalWindowSpace` and `VirtualWindowSpace`
+      for a `WindowSpace` for easier to read function signatures.
+
+  * `XMonad.Actions.CopyWindow`
+
+    - Added `copiesPP` to make a `PP` aware of copies of the focused
+      window.
+
+  - `XMonad.Actions.CycleWS`
+
+    - Added `:&:`, `:|:` and `Not` data constructors to `WSType` to logically
+      combine predicates.
+
+    - Added `hiddenWS`, `emptyWS` and `anyWS` to replace deprecated
+      constructors.
+
+    - Added `ingoringWSs` as a `WSType` predicate to skip workspaces having a
+      tag in a given list.
+
 
 ## 0.16
 
@@ -879,13 +988,6 @@
 
     Currently needs manual setting of the session start flag. This could be
     automated when this moves to the core repository.
-
-  * `XMonad.Actions.EasyMotion`
-
-    A new module that allows selection of visible screens using a key chord.
-    Inspired by [vim-easymotion](https://github.com/easymotion/vim-easymotion). See the animation
-    in the vim-easymotion repo to get some idea of the functionality of this
-    EasyMotion module.
 
   * `XMonad.Layout.MultiDishes`
 

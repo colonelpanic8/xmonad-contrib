@@ -1,5 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE CPP                #-}
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  XMonad.Actions.ShowText
@@ -56,7 +55,7 @@ import qualified XMonad.Util.ExtensibleState as ES
 
 -- | ShowText contains the map with timers as keys and created windows as values
 newtype ShowText = ShowText (Map Atom Window)
-    deriving (Read,Show,Typeable)
+    deriving (Read,Show)
 
 instance ExtensionClass ShowText where
     initialValue = ShowText empty
@@ -87,8 +86,8 @@ handleTimerEvent :: Event -> X All
 handleTimerEvent (ClientMessageEvent _ _ _ dis _ mtyp d) = do
     (ShowText m) <- ES.get :: X ShowText
     a <- io $ internAtom dis "XMONAD_TIMER" False
-    when (mtyp == a && length d >= 1)
-         (whenJust (lookup (fromIntegral $ d !! 0) m) deleteWindow)
+    when (mtyp == a && not (null d))
+         (whenJust (lookup (fromIntegral $ head d) m) deleteWindow)
     mempty
 handleTimerEvent _ = mempty
 

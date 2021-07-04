@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, MultiParamTypeClasses, PatternGuards #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, PatternGuards, TupleSections #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -122,7 +122,7 @@ class (Show (m a), Read (m a)) => LayoutModifier m a where
                            -> Workspace WorkspaceId (l a) a
                            -> Rectangle
                            -> X (([(a,Rectangle)], Maybe (l a)), Maybe (m a))
-    modifyLayoutWithUpdate m w r = flip (,) Nothing <$> modifyLayout m w r
+    modifyLayoutWithUpdate m w r = (, Nothing) <$> modifyLayout m w r
 
     -- | 'handleMess' allows you to spy on messages to the underlying
     --   layout, in order to have an effect in the X monad, or alter
@@ -244,18 +244,18 @@ class (Show (m a), Read (m a)) => LayoutModifier m a where
     --   \"smart space\" in between (the space is not included if the
     --   'modifierDescription' is empty).
     modifyDescription :: (LayoutClass l a) => m a -> l a -> String
-    modifyDescription m l = modifierDescription m <> description l
-        where "" <> x = x
-              x <> y = x ++ " " ++ y
+    modifyDescription m l = modifierDescription m `add` description l
+        where "" `add` x = x
+              x `add` y = x ++ " " ++ y
 
 -- | The 'LayoutClass' instance for a 'ModifiedLayout' defines the
 --   semantics of a 'LayoutModifier' applied to an underlying layout.
 instance (LayoutModifier m a, LayoutClass l a, Typeable m) => LayoutClass (ModifiedLayout m l) a where
     runLayout (Workspace i (ModifiedLayout m l) ms) r =
         do ((ws, ml'),mm')  <- modifyLayoutWithUpdate m (Workspace i l ms) r
-           (ws', mm'') <- redoLayout (maybe m id mm') r ms ws
+           (ws', mm'') <- redoLayout (fromMaybe m mm') r ms ws
            let ml'' = case mm'' `mplus` mm' of
-                        Just m' -> Just $ (ModifiedLayout m') $ maybe l id ml'
+                        Just m' -> Just $ ModifiedLayout m' $ fromMaybe l ml'
                         Nothing -> ModifiedLayout m <$> ml'
            return (ws', ml'')
 
@@ -265,16 +265,11 @@ instance (LayoutModifier m a, LayoutClass l a, Typeable m) => LayoutClass (Modif
                   Just (Right mess') -> handleMessage l mess'
                   _ -> handleMessage l mess
            return $ case mm' of
-                    Just (Left m') -> Just $ (ModifiedLayout m') $ maybe l id ml'
-                    _ -> (ModifiedLayout m) <$> ml'
+                    Just (Left m') -> Just $ ModifiedLayout m' $ fromMaybe l ml'
+                    _ -> ModifiedLayout m <$> ml'
     description (ModifiedLayout m l) = modifyDescription m l
 
 -- | A 'ModifiedLayout' is simply a container for a layout modifier
 --   combined with an underlying layout.  It is, of course, itself a
 --   layout (i.e. an instance of 'LayoutClass').
 data ModifiedLayout m l a = ModifiedLayout (m a) (l a) deriving ( Read, Show )
-
--- N.B. I think there is a Haddock bug here; the Haddock output for
--- the above does not parenthesize (m a) and (l a), which is obviously
--- incorrect.
-

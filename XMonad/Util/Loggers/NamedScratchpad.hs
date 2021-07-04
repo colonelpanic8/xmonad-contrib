@@ -12,8 +12,6 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DeriveDataTypeable #-}
-
 module XMonad.Util.Loggers.NamedScratchpad (-- * Usage
                                             -- $usage
                                             nspTrackStartup
@@ -54,7 +52,7 @@ import qualified XMonad.StackSet as W (allWindows)
 -- them instead (see 'XMonad.Util.NoTaskbar').
 
 -- The extension data for tracking NSP windows
-data NSPTrack = NSPTrack [Maybe Window] deriving Typeable
+newtype NSPTrack = NSPTrack [Maybe Window]
 instance ExtensionClass NSPTrack where
   initialValue = NSPTrack []
 
@@ -86,12 +84,12 @@ scratchpadWindow ns = foldM sp' Nothing (zip [0..] ns)
 --
 -- > , handleEventHook = ... <+> nspTrackHook scratchpads
 nspTrackHook :: [NamedScratchpad] -> Event -> X All
-nspTrackHook _ (DestroyWindowEvent {ev_window = w}) = do
+nspTrackHook _ DestroyWindowEvent{ev_window = w} = do
   XS.modify $ \(NSPTrack ws) -> NSPTrack $ map (\sw -> if sw == Just w then Nothing else sw) ws
   return (All True)
-nspTrackHook ns (ConfigureRequestEvent {ev_window = w}) = do
+nspTrackHook ns ConfigureRequestEvent{ev_window = w} = do
   NSPTrack ws <- XS.get
-  ws' <- forM (zip3 [0..] ws ns) $ \(_,w',NS _ _ q _) -> do
+  ws' <- forM (zip3 [0 :: Integer ..] ws ns) $ \(_,w',NS _ _ q _) -> do
     p <- runQuery q w
     return $ if p then Just w else w'
   XS.put $ NSPTrack ws'

@@ -14,8 +14,6 @@ The provided @unicodePrompt@ and @typeUnicodePrompt@ use @xsel@ and @xdotool@
 respectively.
 -}
 
-{-# LANGUAGE DeriveDataTypeable #-}
-
 module XMonad.Prompt.Unicode (
  -- * Usage
  -- $usage
@@ -25,7 +23,6 @@ module XMonad.Prompt.Unicode (
  ) where
 
 import qualified Data.ByteString.Char8 as BS
-import Data.Ord
 import Numeric
 import System.IO
 import System.IO.Error
@@ -45,7 +42,7 @@ instance XPrompt Unicode where
   nextCompletion Unicode = getNextCompletion
 
 newtype UnicodeData = UnicodeData { getUnicodeData :: [(Char, BS.ByteString)] }
-  deriving (Typeable, Read, Show)
+  deriving (Read, Show)
 
 instance ExtensionClass UnicodeData where
   initialValue = UnicodeData []
@@ -81,7 +78,7 @@ populateEntries unicodeDataFilename = do
           hPutStrLn stderr "Do you have unicode-data installed?"
           return False
         Right dat -> do
-          XS.put . UnicodeData . sortBy (comparing (BS.length . snd)) $ parseUnicodeData dat
+          XS.put . UnicodeData . sortOn (BS.length . snd) $ parseUnicodeData dat
           return True
     else return True
 
@@ -97,16 +94,16 @@ type Predicate = String -> String -> Bool
 searchUnicode :: [(Char, BS.ByteString)] -> Predicate -> String -> [(Char, String)]
 searchUnicode entries p s = map (second BS.unpack) $ filter go entries
   where w = filter (all isAscii) . filter ((> 1) . length) . words $ map toUpper s
-        go (c,d) = all (`p` (BS.unpack d)) w
+        go (_, d) = all (`p` BS.unpack d) w
 
 mkUnicodePrompt :: String -> [String] -> String -> XPConfig -> X ()
-mkUnicodePrompt prog args unicodeDataFilename config =
+mkUnicodePrompt prog args unicodeDataFilename xpCfg =
   whenX (populateEntries unicodeDataFilename) $ do
     entries <- fmap getUnicodeData (XS.get :: X UnicodeData)
     mkXPrompt
       Unicode
-      (config {sorter = sorter config . map toUpper})
-      (unicodeCompl entries $ searchPredicate config)
+      (xpCfg {sorter = sorter xpCfg . map toUpper})
+      (unicodeCompl entries $ searchPredicate xpCfg)
       paste
   where
     unicodeCompl :: [(Char, BS.ByteString)] -> Predicate -> String -> IO [String]

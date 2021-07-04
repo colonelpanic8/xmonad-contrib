@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, MultiParamTypeClasses, DeriveDataTypeable #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternGuards, FlexibleContexts, FlexibleInstances #-}
 -----------------------------------------------------------------------------
 -- |
@@ -34,9 +34,9 @@ module XMonad.Layout.BoringWindows (
 
 import XMonad.Layout.LayoutModifier(ModifiedLayout(..),
                                     LayoutModifier(handleMessOrMaybeModifyIt, redoLayout))
-import XMonad(Typeable, LayoutClass, Message, X, fromMessage,
+import XMonad(LayoutClass, Message, X, fromMessage,
               broadcastMessage, sendMessage, windows, withFocused, Window)
-import XMonad.Prelude (fromMaybe, listToMaybe, maybeToList, union, (\\))
+import XMonad.Prelude (find, fromMaybe, listToMaybe, maybeToList, union, (\\))
 import XMonad.Util.Stack (reverseS)
 import qualified Data.Map as M
 import qualified XMonad.StackSet as W
@@ -70,14 +70,13 @@ data BoringMessage = FocusUp | FocusDown | FocusMaster | IsBoring Window | Clear
                      | SwapDown
                      | SiftUp
                      | SiftDown
-                     deriving ( Read, Show, Typeable )
+                     deriving ( Read, Show )
 
 instance Message BoringMessage
 
 -- | UpdateBoring is sent before attempting to view another boring window, so
 -- that layouts have a chance to mark boring windows.
 data UpdateBoring = UpdateBoring
-    deriving (Typeable)
 instance Message UpdateBoring
 
 markBoring, clearBoring, focusUp, focusDown, focusMaster, swapUp, swapDown, siftUp, siftDown :: X ()
@@ -100,7 +99,7 @@ data BoringWindows a = BoringWindows
     { namedBoring :: M.Map String [a] -- ^ store borings with a specific source
     , chosenBoring :: [a]             -- ^ user-chosen borings
     , hiddenBoring :: Maybe [a]       -- ^ maybe mark hidden windows
-    } deriving (Show,Read,Typeable)
+    } deriving (Show,Read)
 
 boringWindows :: (LayoutClass l a, Eq a) => l a -> ModifiedLayout BoringWindows l a
 boringWindows = ModifiedLayout (BoringWindows M.empty [] Nothing)
@@ -110,13 +109,13 @@ boringAuto :: (LayoutClass l a, Eq a) => l a -> ModifiedLayout BoringWindows l a
 boringAuto = ModifiedLayout (BoringWindows M.empty [] (Just []))
 
 instance LayoutModifier BoringWindows Window where
-    redoLayout (b@BoringWindows { hiddenBoring = bs }) _r mst arrs = do
+    redoLayout b@BoringWindows{ hiddenBoring = bs } _r mst arrs = do
         let bs' = W.integrate' mst \\ map fst arrs
-        return (arrs, Just $ b { hiddenBoring = const bs' <$> bs } )
+        return (arrs, Just $ b { hiddenBoring = bs' <$ bs } )
 
     handleMessOrMaybeModifyIt bst@(BoringWindows nbs cbs lbs) m
         | Just (Replace k ws) <- fromMessage m
-        , maybe True (ws/=) (M.lookup k nbs) =
+        , Just ws /= M.lookup k nbs =
             let nnb = if null ws then M.delete k nbs
                           else M.insert k ws nbs
             in rjl bst { namedBoring = nnb }
@@ -155,8 +154,8 @@ instance LayoutModifier BoringWindows Window where
               skipBoringSwapUp = skipBoring'
                                    (maybe True (`notElem` bs) . listToMaybe . W.down)
                                    swapUp'
-              skipBoring' p f st = fromMaybe st $ listToMaybe
-                                   $ filter p
+              skipBoring' p f st = fromMaybe st
+                                   $ find p
                                    $ drop 1
                                    $ take (length $ W.integrate st)
                                    $ iterate f st

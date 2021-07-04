@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module       : XMonad.Actions.SpawnOn
@@ -66,15 +65,15 @@ import qualified XMonad.Util.ExtensibleState as XS
 -- For detailed instructions on editing your key bindings, see
 -- "XMonad.Doc.Extending#Editing_key_bindings".
 
-newtype Spawner = Spawner {pidsRef :: [(ProcessID, ManageHook)]} deriving Typeable
+newtype Spawner = Spawner {pidsRef :: [(ProcessID, ManageHook)]}
 
 instance ExtensionClass Spawner where
     initialValue = Spawner []
 
 
 getPPIDOf :: ProcessID -> Maybe ProcessID
-getPPIDOf pid =
-    case unsafePerformIO . tryJust (guard . isDoesNotExistError) . readFile . printf "/proc/%d/stat" $ toInteger pid of
+getPPIDOf thisPid =
+    case unsafePerformIO . tryJust (guard . isDoesNotExistError) . readFile . printf "/proc/%d/stat" $ toInteger thisPid of
       Left _         -> Nothing
       Right contents -> case lines contents of
                           []        -> Nothing
@@ -83,11 +82,11 @@ getPPIDOf pid =
                                          _                    -> Nothing
 
 getPPIDChain :: ProcessID -> [ProcessID]
-getPPIDChain pid' = ppid_chain pid' []
-    where ppid_chain pid acc =
-              if pid == 0
+getPPIDChain thisPid = ppid_chain thisPid []
+    where ppid_chain pid' acc =
+              if pid' == 0
               then acc
-              else case getPPIDOf pid of
+              else case getPPIDOf pid' of
                      Nothing   -> acc
                      Just ppid -> ppid_chain ppid (ppid : acc)
 
@@ -124,7 +123,7 @@ manageSpawnWithGC garbageCollect = do
 
 mkPrompt :: (String -> X ()) -> XPConfig -> X ()
 mkPrompt cb c = do
-    cmds <- io $ getCommands
+    cmds <- io getCommands
     mkXPrompt Shell c (getShellCompl cmds $ searchPredicate c) cb
 
 -- | Replacement for Shell prompt ("XMonad.Prompt.Shell") which launches
@@ -145,13 +144,13 @@ spawnHere cmd = withWindowSet $ \ws -> spawnOn (W.currentTag ws) cmd
 -- | Replacement for 'spawn' which launches
 -- application on given workspace.
 spawnOn :: WorkspaceId -> String -> X ()
-spawnOn ws cmd = spawnAndDo (doShift ws) cmd
+spawnOn ws = spawnAndDo (doShift ws)
 
 -- | Spawn an application and apply the manage hook when it opens.
 spawnAndDo :: ManageHook -> String -> X ()
 spawnAndDo mh cmd = do
     p <- spawnPID $ mangle cmd
-    modifySpawner $ ((p,mh) :)
+    modifySpawner ((p,mh) :)
  where
     -- TODO this is silly, search for a better solution
     mangle xs | any (`elem` metaChars) xs || "exec" `isInfixOf` xs = xs

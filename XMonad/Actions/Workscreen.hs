@@ -20,7 +20,6 @@
 -- This also permits to see all workspaces of a workscreen even if just
 -- one screen is present, and to move windows from workspace to workscreen.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveDataTypeable #-}
 
 module XMonad.Actions.Workscreen (
   -- * Usage
@@ -58,23 +57,23 @@ import XMonad.Actions.OnScreen
 -- "XMonad.Doc.Extending#Editing_key_bindings".
 
 
-data Workscreen = Workscreen{workscreenId::Int,workspaces::[WorkspaceId]} deriving (Show,Typeable)
+data Workscreen = Workscreen{workscreenId::Int,workspaces::[WorkspaceId]} deriving (Show)
 type WorkscreenId=Int
 
-data WorkscreenStorage = WorkscreenStorage WorkscreenId [Workscreen] deriving (Show,Typeable)
+data WorkscreenStorage = WorkscreenStorage WorkscreenId [Workscreen] deriving (Show)
 instance ExtensionClass WorkscreenStorage where
   initialValue = WorkscreenStorage 0 []
 
 -- | Helper to group workspaces. Multiply workspace by screens number.
 expandWorkspace :: Int -> [WorkspaceId] -> [WorkspaceId]
-expandWorkspace nscr ws = concat $ map expandId ws
+expandWorkspace nscr = concatMap expandId
   where expandId wsId = let t = wsId ++ "_"
                         in map ((++) t . show ) [1..nscr]
 
 -- | Create workscreen list from workspace list. Group workspaces to
 -- packets of screens number size.
 fromWorkspace :: Int -> [WorkspaceId] -> [Workscreen]
-fromWorkspace n ws = map (\(a,b) -> Workscreen a b) $ zip [0..] (fromWorkspace' n ws)
+fromWorkspace n ws = zipWith Workscreen [0..] (fromWorkspace' n ws)
 fromWorkspace' :: Int -> [WorkspaceId] -> [[WorkspaceId]]
 fromWorkspace' _ [] = []
 fromWorkspace' n ws = take n ws : fromWorkspace' n (drop n ws)

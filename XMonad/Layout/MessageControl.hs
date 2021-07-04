@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -31,7 +31,6 @@ import XMonad.StackSet (Workspace(..))
 
 import XMonad.Layout.LayoutModifier (LayoutModifier(..), ModifiedLayout(..))
 
-import Data.Typeable (Typeable)
 import Control.Arrow (second)
 
 -- $usage
@@ -45,7 +44,6 @@ import Control.Arrow (second)
 --
 -- > import XMonad.Layout.Master (mastered)
 -- > import XMonad.Layout.Tabbed (simpleTabbed)
--- > import XMonad.Layout.LayoutCombinators ((|||))
 -- >
 -- > myLayout = Tall ||| unEscape (mastered 0.01 0.5 $ Full ||| simpleTabbed)
 --
@@ -62,20 +60,17 @@ import Control.Arrow (second)
 -- >                       unEscape $ mastered 0.01 0.5
 -- >                         $ Full ||| simpleTabbed)
 --
--- /IMPORTANT NOTE:/ The standard '(|||)' operator from "XMonad.Layout"
--- does not behave correctly with 'ignore'. Make sure you use the one
--- from "XMonad.Layout.LayoutCombinators".
 
 -- | the Ignore layout modifier. Prevents its inner layout from receiving
 -- messages of a certain type.
 
-data Ignore m l w = I (l w)
+newtype Ignore m l w = I (l w)
                     deriving (Show, Read)
 
 instance (Message m, LayoutClass l w) => LayoutClass (Ignore m l) w where
     runLayout ws r = second (I <$>) <$> runLayout (unILayout ws) r
         where  unILayout :: Workspace i (Ignore m l w) w -> Workspace i (l w) w
-               unILayout w@(Workspace { layout = (I l) }) = w { layout = l }
+               unILayout w@Workspace{ layout = (I l) } = w { layout = l }
     handleMessage l@(I l') sm
         = case fromMessageAs sm l of
             Just _ -> return Nothing
@@ -100,8 +95,6 @@ instance LayoutModifier UnEscape a where
 -- | Data type for an escaped message. Send with 'escape'.
 
 newtype EscapedMessage = Escape SomeMessage
-    deriving Typeable
-
 instance Message EscapedMessage
 
 
@@ -114,12 +107,12 @@ escape = Escape . SomeMessage
 -- | Applies the UnEscape layout modifier to a layout.
 
 unEscape :: LayoutClass l w => l w -> ModifiedLayout UnEscape l w
-unEscape l = ModifiedLayout UE l
+unEscape = ModifiedLayout UE
 
 
 -- | Applies the Ignore layout modifier to a layout, blocking
 -- all messages of the same type as the one passed as its first argument.
 
 ignore :: (Message m, LayoutClass l w)
-          => m -> l w -> (Ignore m l w)
-ignore _ l = I l
+          => m -> l w -> Ignore m l w
+ignore _ = I

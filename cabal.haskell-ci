@@ -1,0 +1,15 @@
+apt:
+  libx11-dev
+  libxext-dev
+  libxft-dev
+  libxinerama-dev
+  libxrandr-dev
+  libxss-dev
+
+hlint: True
+hlint-yaml: .hlint.yaml
+
+raw-project
+  package xmonad-contrib
+    flags: +pedantic
+    ghc-options: -j

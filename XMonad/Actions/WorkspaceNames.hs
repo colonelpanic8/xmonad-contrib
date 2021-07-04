@@ -15,8 +15,6 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DeriveDataTypeable #-}
-
 module XMonad.Actions.WorkspaceNames (
     -- * Usage
     -- $usage
@@ -48,7 +46,7 @@ import XMonad.Prelude (fromMaybe, isInfixOf, (<&>), (>=>))
 import qualified XMonad.StackSet as W
 import qualified XMonad.Util.ExtensibleState as XS
 
-import XMonad.Actions.CycleWS (findWorkspace, WSType(..), Direction1D(..))
+import XMonad.Actions.CycleWS (findWorkspace, WSType(..), Direction1D(..), anyWS)
 import qualified XMonad.Actions.SwapWorkspaces as Swap
 import XMonad.Hooks.DynamicLog (PP(..))
 import XMonad.Prompt (mkXPrompt, XPConfig)
@@ -87,7 +85,7 @@ import qualified Data.Map as M
 
 -- | Workspace names container.
 newtype WorkspaceNames = WorkspaceNames (M.Map WorkspaceId String)
-    deriving (Typeable, Read, Show)
+    deriving (Read, Show)
 
 instance ExtensionClass WorkspaceNames where
     initialValue = WorkspaceNames M.empty
@@ -141,7 +139,7 @@ workspaceNamesPP pp = getWorkspaceNames ":" <&> \ren -> pp{ ppRename = ppRename 
 
 -- | See 'XMonad.Actions.SwapWorkspaces.swapTo'. This is the same with names.
 swapTo :: Direction1D -> X ()
-swapTo dir = swapTo' dir AnyWS
+swapTo dir = swapTo' dir anyWS
 
 -- | Swap with the previous or next workspace of the given type.
 swapTo' :: Direction1D -> WSType -> X ()
@@ -161,7 +159,7 @@ swapNames w1 w2 = do
     WorkspaceNames m <- XS.get
     let getname w = fromMaybe "" $ M.lookup w m
         set w name m' = if null name then M.delete w m' else M.insert w name m'
-    XS.put $ WorkspaceNames $ set w1 (getname w2) $ set w2 (getname w1) $ m
+    XS.put $ WorkspaceNames $ set w1 (getname w2) $ set w2 (getname w1) m
 
 -- | Same behavior than 'XMonad.Prompt.Workspace.workspacePrompt' excepted it acts on the workspace name provided by this module.
 workspaceNamePrompt :: XPConfig -> (WorkspaceId -> X ()) -> X ()

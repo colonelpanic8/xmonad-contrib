@@ -18,26 +18,21 @@ module XMonad.Actions.CycleSelectedLayouts (
     cycleThroughLayouts) where
 
 import XMonad
-import XMonad.Prelude (findIndex, fromMaybe)
-import XMonad.Layout.LayoutCombinators (JumpToLayout(..))
+import XMonad.Prelude (elemIndex, fromMaybe)
 import qualified XMonad.StackSet as S
 
 -- $usage
 -- You can use this module with the following in your @~\/.xmonad\/xmonad.hs@:
 --
--- > import XMonad hiding ((|||))
--- > import XMonad.Layout.LayoutCombinators ((|||))
+-- > import XMonad
 -- > import XMonad.Actions.CycleSelectedLayouts
 --
 -- >   , ((modm,  xK_t ),   cycleThroughLayouts ["Tall", "Mirror Tall"])
---
--- Make sure you are using NewSelect from XMonad.Layout.LayoutCombinators,
--- rather than the Select defined in xmonad core.
 
 cycleToNext :: (Eq a) => [a] -> a -> Maybe a
 cycleToNext lst a = do
     -- not beautiful but simple and readable
-    ind <- findIndex (a==) lst
+    ind <- elemIndex a lst
     return $ lst !! if ind == length lst - 1 then 0 else ind+1
 
 -- | If the current layout is in the list, cycle to the next layout. Otherwise,

@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  XMonad.Hooks.DynamicHooks
@@ -48,7 +47,6 @@ import qualified XMonad.Util.ExtensibleState as XS
 data DynamicHooks = DynamicHooks
     { transients :: [(Query Bool, ManageHook)]
     , permanent  :: ManageHook }
-                    deriving Typeable
 
 instance ExtensionClass DynamicHooks where
     initialValue = DynamicHooks [] idHook
@@ -59,16 +57,16 @@ instance ExtensionClass DynamicHooks where
 -- doFloat and doIgnore are idempotent.
 -- | Master 'ManageHook' that must be in your @xmonad.hs@ 'ManageHook'.
 dynamicMasterHook :: ManageHook
-dynamicMasterHook = (ask >>= \w -> liftX (do
+dynamicMasterHook = ask >>= \w -> liftX $ do
   dh <- XS.get
   (Endo f)  <- runQuery (permanent dh) w
   ts <- mapM (\(q,a) -> runQuery q w >>= \x -> return (x,(q, a))) (transients dh)
   let (ts',nts) = partition fst ts
   gs <- mapM (flip runQuery w . snd . snd) ts'
-  let (Endo g) = maybe (Endo id) id $ listToMaybe gs
+  let (Endo g) = fromMaybe (Endo id) $ listToMaybe gs
   XS.put $ dh { transients = map snd nts }
   return $ Endo $ f . g
-                                       ))
+
 -- | Appends the given 'ManageHook' to the permanent dynamic 'ManageHook'.
 addDynamicHook :: ManageHook -> X ()
 addDynamicHook m = updateDynamicHook (<+> m)
@@ -87,4 +85,4 @@ updateDynamicHook f = XS.modify $ \dh -> dh { permanent = f (permanent dh) }
 -- > oneShotHook dynHooksRef (className =? "example) doFloat
 --
 oneShotHook :: Query Bool -> ManageHook -> X ()
-oneShotHook q a = XS.modify $ \dh -> dh { transients = (q,a):(transients dh) }
+oneShotHook q a = XS.modify $ \dh -> dh { transients = (q,a):transients dh }

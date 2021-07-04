@@ -42,7 +42,7 @@ import Data.List (elemIndex)
 --
 --   * @xdotool@ on system (in path)
 --   * "XMonad.Hooks.EwmhDesktops" for @xdotool@ support (see Hackage docs for setup)
---   * use of UnsafeStdinReader/UnsafeXMonadLog in xmobarrc (rather than StdinReader/XMonadLog)
+--   * use of UnsafeStdinReader\/UnsafeXMonadLog in xmobarrc (rather than StdinReader\/XMonadLog)
 --
 -- Note that UnsafeStdinReader is potentially dangerous if your workspace
 -- names are dynamically generated from untrusted input (like window titles).
@@ -52,7 +52,7 @@ import Data.List (elemIndex)
 -- | Wrap string with an xmobar action that uses @xdotool@ to switch to
 -- workspace @i@.
 clickableWrap :: Int -> String -> String
-clickableWrap i ws = xmobarAction ("xdotool set_desktop " ++ show i) "1" ws
+clickableWrap i = xmobarAction ("xdotool set_desktop " ++ show i) "1"
 
 -- | 'XMonad.Util.WorkspaceCompare.getWsIndex' extended to handle workspaces
 -- not in the static 'workspaces' config, such as those created by

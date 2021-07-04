@@ -32,6 +32,7 @@ import           XMonad.Util.DebugWindow                     (debugWindow)
 -- import           Graphics.X11.Xlib.Extras.GetAtomName        (getAtomName)
 
 import           Control.Exception                    as E
+import           Control.Monad.Fail
 import           Control.Monad.State
 import           Control.Monad.Reader
 import           Codec.Binary.UTF8.String
@@ -50,17 +51,17 @@ debugEventsHook e =  debugEventsHook' e >> return (All True)
 -- | Dump an X11 event.  Can't be used directly as a 'handleEventHook'.
 debugEventsHook' :: Event -> X ()
 
-debugEventsHook' (ConfigureRequestEvent {ev_window       = w
-                                        ,ev_parent       = p
-                                        ,ev_x            = x
-                                        ,ev_y            = y
-                                        ,ev_width        = wid
-                                        ,ev_height       = ht
-                                        ,ev_border_width = bw
-                                        ,ev_above        = above
-                                        ,ev_detail       = place
-                                        ,ev_value_mask   = msk
-                                        }) = do
+debugEventsHook' ConfigureRequestEvent{ev_window       = w
+                                      ,ev_parent       = p
+                                      ,ev_x            = x
+                                      ,ev_y            = y
+                                      ,ev_width        = wid
+                                      ,ev_height       = ht
+                                      ,ev_border_width = bw
+                                      ,ev_above        = above
+                                      ,ev_detail       = place
+                                      ,ev_value_mask   = msk
+                                      } = do
   windowEvent "ConfigureRequest" w
   windowEvent "  parent"         p
 --  mask <- quickFormat msk $ dumpBits wmCRMask
@@ -83,75 +84,73 @@ debugEventsHook' (ConfigureRequestEvent {ev_window       = w
                            ]
   say "  requested" s
 
-debugEventsHook' (ConfigureEvent        {ev_window = w
-                                        ,ev_above  = above
-                                        }) = do
+debugEventsHook' ConfigureEvent        {ev_window = w
+                                       ,ev_above  = above
+                                       } = do
   windowEvent "Configure" w
   -- most of the content is covered by debugWindow
   when (above /= none) $ debugWindow above >>= say "  above"
 
-debugEventsHook' (MapRequestEvent       {ev_window     = w
-                                        ,ev_parent     = p
-                                        }) =
+debugEventsHook' MapRequestEvent       {ev_window     = w
+                                       ,ev_parent     = p
+                                       } =
   windowEvent "MapRequest" w >>
   windowEvent "  parent"   p
 
-debugEventsHook' e@(KeyEvent {ev_event_type = t})
+debugEventsHook' e@KeyEvent {ev_event_type = t}
     | t == keyPress =
   io (hPutStr stderr "KeyPress ") >>
   debugKeyEvents e >>
   return ()
 
-debugEventsHook' (ButtonEvent           {ev_window = w
-                                        ,ev_state  = s
-                                        ,ev_button = b
-                                        }) = do
+debugEventsHook' ButtonEvent           {ev_window = w
+                                       ,ev_state  = s
+                                       ,ev_button = b
+                                       } = do
   windowEvent "Button" w
   nl <- gets numberlockMask
   let msk | s == 0    = ""
           | otherwise = "modifiers " ++ vmask nl s
   say "  button" $ show b ++ msk
 
-debugEventsHook' (DestroyWindowEvent    {ev_window = w
-                                        }) =
+debugEventsHook' DestroyWindowEvent    {ev_window = w
+                                        } =
   windowEvent "DestroyWindow" w
 
-debugEventsHook' (UnmapEvent            {ev_window = w
-                                        }) =
+debugEventsHook' UnmapEvent            {ev_window = w
+                                       } =
   windowEvent "Unmap" w
 
-debugEventsHook' (MapNotifyEvent        {ev_window = w
-                                        }) =
+debugEventsHook' MapNotifyEvent        {ev_window = w
+                                       } =
   windowEvent "MapNotify" w
 
 {- way too much output; suppressed.
 
-debugEventsHook' (CrossingEvent         {ev_window    = w
-                                        ,ev_subwindow = s
-                                        }) =
+debugEventsHook' (CrossingEvent        {ev_window    = w
+                                       ,ev_subwindow = s
+                                       }) =
   windowEvent "Crossing"    w >>
   windowEvent "  subwindow" s
 -}
-debugEventsHook' (CrossingEvent         {}) =
+debugEventsHook' CrossingEvent         {} =
   return ()
 
-debugEventsHook' (SelectionRequest      {ev_requestor = rw
-                                        ,ev_owner     = ow
-                                        ,ev_selection = a
-                                        }) =
+debugEventsHook' SelectionRequest      {ev_requestor = rw
+                                       ,ev_owner     = ow
+                                       ,ev_selection = a
+                                       } =
   windowEvent "SelectionRequest" rw >>
   windowEvent "  owner"          ow >>
   atomEvent   "  atom"           a
 
-debugEventsHook' (PropertyEvent         {ev_window    = w
-                                        ,ev_atom      = a
-                                        ,ev_propstate = s
-                                        }) = do
+debugEventsHook' PropertyEvent         {ev_window    = w
+                                       ,ev_atom      = a
+                                       ,ev_propstate = s
+                                       } = do
   a' <- atomName a
   -- too many of these, and they're not real useful
-  if a' `elem` ["_NET_WM_USER_TIME"
---               ,"_NET_WM_WINDOW_OPACITY"
-               ] then return () else do
+  if a' == "_NET_WM_USER_TIME" then return () else do
   windowEvent "Property on" w
   s' <- case s of
           1 -> return "deleted"
@@ -159,19 +158,19 @@ debugEventsHook' (PropertyEvent         {ev_window    = w
           _ -> error "Illegal propState; Xlib corrupted?"
   say "  atom" $ a' ++ s'
 
-debugEventsHook' (ExposeEvent           {ev_window = w
-                                        }) =
+debugEventsHook' ExposeEvent           {ev_window = w
+                                       } =
   windowEvent "Expose" w
 
-debugEventsHook' (ClientMessageEvent    {ev_window       = w
-                                        ,ev_message_type = a
-                                        -- @@@ they did it again!  no ev_format,
-                                        --     and ev_data is [CInt]
-                                        -- @@@ and get a load of the trainwreck
-                                        --     that is setClientMessageEvent!
---                                        ,ev_format       = b
-                                        ,ev_data         = vs'
-                                        }) = do
+debugEventsHook' ClientMessageEvent    {ev_window       = w
+                                       ,ev_message_type = a
+                                       -- @@@ they did it again!  no ev_format,
+                                       --     and ev_data is [CInt]
+                                       -- @@@ and get a load of the trainwreck
+                                       --     that is setClientMessageEvent!
+--                                     ,ev_format       = b
+                                       ,ev_data         = vs'
+                                       } = do
   windowEvent "ClientMessage on" w
   n <- atomName a
   -- this is a sort of custom property
@@ -217,12 +216,6 @@ clientMessages =  [("_NET_ACTIVE_WINDOW",("_NET_ACTIVE_WINDOW",32,1))
                   ,("WM_COMMAND"        ,("STRING"            , 8,0))
                   ,("WM_SAVE_YOURSELF"  ,("STRING"            , 8,0))
                   ]
-
-#if __GLASGOW_HASKELL__ < 707
-finiteBitSize :: Bits a => a -> Int
-finiteBitSize x = bitSize x
-#endif
-
 
 -- | Convert a modifier mask into a useful string
 vmask                 :: KeyMask -> KeyMask -> String
@@ -273,6 +266,7 @@ newtype Decoder a = Decoder (ReaderT Decode (StateT DecodeState X) a)
              ,Applicative
              ,Monad
              ,MonadIO
+             ,MonadFail
              ,MonadState  DecodeState
              ,MonadReader Decode
              )
@@ -521,10 +515,10 @@ dumpProp a _ | a == wM_NAME                           =  dumpString
              | a == wM_TRANSIENT_FOR                  =  do
                  root <- fromIntegral <$> inX (asks theRoot)
                  w <- asks window
-                 WMHints {wmh_window_group = group} <-
+                 WMHints {wmh_window_group = wgroup} <-
                    inX $ asks display >>= io . flip getWMHints w
-                 dumpExcept [(0   ,"window group " ++ show group)
-                            ,(root,"window group " ++ show group)
+                 dumpExcept [(0   ,"window group " ++ show wgroup)
+                            ,(root,"window group " ++ show wgroup)
                             ]
                             dumpWindow
              | a == rESOURCE_MANAGER                  =  dumpString
@@ -602,7 +596,7 @@ dumpArray item =  do
 dumpArray'          :: Decoder Bool -> String -> Decoder Bool
 dumpArray' item pfx =  do
   vs <- gets value
-  if vs == []
+  if null vs
     then append "]"
     else append pfx >> whenD item (dumpArray' item ",")
 
@@ -689,31 +683,30 @@ dumpList'' m ((l,p,t):ps) sep = do
 dumpString :: Decoder Bool
 dumpString =  do
   fmt <- asks pType
-  x <- inX $ mapM getAtom ["COMPOUND_TEXT","UTF8_STRING"]
-  case x of
-    [cOMPOUND_TEXT,uTF8_STRING] -> case () of
-      () | fmt == cOMPOUND_TEXT -> guardSize 16 (...)
-         | fmt == sTRING        -> guardSize  8 $ do
-                                     vs <- gets value
-                                     modify (\r -> r {value = []})
-                                     let ss = flip unfoldr (map twiddle vs) $
-                                              \s -> if null s
-                                                    then Nothing
-                                                    else let (w,s'') = break (== '\NUL') s
-                                                             s'      = if null s''
-                                                                       then s''
-                                                                       else tail s''
-                                                          in Just (w,s')
-                                     case ss of
-                                       [s] -> append $ show s
-                                       ss' -> let go (s:ss'') c = append c        >>
-                                                                  append (show s) >>
-                                                                  go ss'' ","
-                                                  go []       _ = append "]"
-                                               in append "[" >> go ss' ""
-         | fmt == uTF8_STRING   -> dumpUTF -- duplicate type test instead of code :)
-         | otherwise            -> (inX $ atomName fmt) >>=
-                                   failure . ("unrecognized string type " ++)
+  [cOMPOUND_TEXT,uTF8_STRING] <- inX $ mapM getAtom ["COMPOUND_TEXT","UTF8_STRING"]
+  case () of
+    () | fmt == cOMPOUND_TEXT -> guardSize 16 (...)
+       | fmt == sTRING        -> guardSize  8 $ do
+                                   vs <- gets value
+                                   modify (\r -> r {value = []})
+                                   let ss = flip unfoldr (map twiddle vs) $
+                                            \s -> if null s
+                                                  then Nothing
+                                                  else let (w,s'') = break (== '\NUL') s
+                                                           s'      = if null s''
+                                                                     then s''
+                                                                     else tail s''
+                                                        in Just (w,s')
+                                   case ss of
+                                     [s] -> append $ show s
+                                     ss' -> let go (s:ss'') c = append c        >>
+                                                                append (show s) >>
+                                                                go ss'' ","
+                                                go []       _ = append "]"
+                                             in append "[" >> go ss' ""
+       | fmt == uTF8_STRING   -> dumpUTF -- duplicate type test instead of code :)
+       | otherwise            -> inX (atomName fmt) >>=
+                                 failure . ("unrecognized string type " ++)
 
 -- show who owns a selection
 dumpSelection :: Decoder Bool
@@ -743,7 +736,7 @@ dumpXKlInds =  guardType iNTEGER $ do
                        | n .&. bt /= 0    =  dumpInds (n .&. complement bt)
                                                       (bt `shiftL` 1)
                                                       (c + 1)
-                                                      ((show c):bs)
+                                                      (show c:bs)
                        | otherwise        =  dumpInds n
                                                       (bt `shiftL` 1)
                                                       (c + 1)
@@ -1170,28 +1163,25 @@ getInt w f =  getInt' w >>= maybe (return False) (append . f)
 -- @@@@@@@@@ evil beyond evil.  there *has* to be a better way
 inhale    :: Int -> Decoder Integer
 inhale  8 =  do
-               x <- eat 1
-               case x of
-                 [b] -> return $ fromIntegral b
+               [b] <- eat 1
+               return $ fromIntegral b
 inhale 16 =  do
-               x <- eat 2
-               case x of
-                 [b0,b1] -> io $ allocaArray 2 $ \p -> do
-                              pokeArray p [b0,b1]
-                              [v] <- peekArray 1 (castPtr p :: Ptr Word16)
-                              return $ fromIntegral v
+               [b0,b1] <- eat 2
+               io $ allocaArray 2 $ \p -> do
+                 pokeArray p [b0,b1]
+                 [v] <- peekArray 1 (castPtr p :: Ptr Word16)
+                 return $ fromIntegral v
 inhale 32 =  do
-               x <- eat 4
-               case x of
-                 [b0,b1,b2,b3] -> io $ allocaArray 4 $ \p -> do
-                                    pokeArray p [b0,b1,b2,b3]
-                                    [v] <- peekArray 1 (castPtr p :: Ptr Word32)
-                                    return $ fromIntegral v
+               [b0,b1,b2,b3] <- eat 4
+               io $ allocaArray 4 $ \p -> do
+                 pokeArray p [b0,b1,b2,b3]
+                 [v] <- peekArray 1 (castPtr p :: Ptr Word32)
+                 return $ fromIntegral v
 inhale  b =  error $ "inhale " ++ show b
 
 eat   :: Int -> Decoder Raw
 eat n =  do
-  (bs,rest) <- splitAt n <$> gets value
+  (bs,rest) <- gets (splitAt n . value)
   modify (\r -> r {value = rest})
   return bs
 

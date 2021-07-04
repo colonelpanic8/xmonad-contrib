@@ -9,12 +9,12 @@
 
 module XMonad.Config.Droundy ( config, mytab ) where
 
-import XMonad hiding (keys, config, (|||))
+import XMonad hiding (keys, config)
 import qualified XMonad (keys)
 
 import qualified XMonad.StackSet as W
 import qualified Data.Map as M
-import System.Exit ( exitWith, ExitCode(ExitSuccess) )
+import System.Exit ( exitSuccess )
 
 import XMonad.Layout.Tabbed ( tabbed,
                               shrinkText, Shrinker, shrinkIt, CustomShrink(CustomShrink) )
@@ -39,8 +39,8 @@ import XMonad.Prompt.Shell ( shellPrompt )
 import XMonad.Actions.CopyWindow ( kill1, copy )
 import XMonad.Actions.DynamicWorkspaces ( withNthWorkspace, withWorkspace,
                                           selectWorkspace, renameWorkspace, removeWorkspace )
-import XMonad.Actions.CycleWS ( moveTo, WSType( HiddenNonEmptyWS ),
-                                Direction1D( Prev, Next) )
+import XMonad.Actions.CycleWS ( moveTo, hiddenWS, emptyWS,
+                                Direction1D( Prev, Next), WSType ((:&:), Not) )
 
 import XMonad.Hooks.ManageDocks ( avoidStruts, docks )
 import XMonad.Hooks.EwmhDesktops ( ewmh )
@@ -77,11 +77,11 @@ keys x = M.fromList $
     , ((modMask x,               xK_t     ), withFocused $ windows . W.sink) -- %! Push window back into tiling
 
     -- quit, or restart
-    , ((modMask x .|. shiftMask, xK_Escape), io (exitWith ExitSuccess)) -- %! Quit xmonad
+    , ((modMask x .|. shiftMask, xK_Escape), io exitSuccess) -- %! Quit xmonad
     , ((modMask x              , xK_Escape), restart "xmonad" True) -- %! Restart xmonad
 
-    , ((modMask x .|. shiftMask, xK_Right), moveTo Next HiddenNonEmptyWS)
-    , ((modMask x .|. shiftMask, xK_Left), moveTo Prev HiddenNonEmptyWS)
+    , ((modMask x .|. shiftMask, xK_Right), moveTo Next $ hiddenWS :&: Not emptyWS)
+    , ((modMask x .|. shiftMask, xK_Left), moveTo Prev $ hiddenWS :&: Not emptyWS)
     , ((modMask x, xK_Right), sendMessage $ Go R)
     , ((modMask x, xK_Left), sendMessage $ Go L)
     , ((modMask x, xK_Up), sendMessage $ Go U)

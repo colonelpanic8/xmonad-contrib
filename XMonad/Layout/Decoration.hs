@@ -1,9 +1,7 @@
-{-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternGuards         #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
 {-# LANGUAGE CPP                   #-}
 -----------------------------------------------------------------------------
 -- |
@@ -121,7 +119,7 @@ instance Default Theme where
 
 -- | A 'Decoration' layout modifier will handle 'SetTheme', a message
 -- to dynamically change the decoration 'Theme'.
-data DecorationMsg = SetTheme Theme deriving ( Typeable )
+newtype DecorationMsg = SetTheme Theme
 instance Message DecorationMsg
 
 -- | The 'Decoration' state component, where the list of decorated
@@ -245,7 +243,6 @@ instance (DecorationStyle ds Window, Shrinker s) => LayoutModifier (Decoration d
                                 let ndwrs = zip toAdd $ repeat (Nothing,Nothing)
                                 ndecos <- resync (ndwrs ++ del_dwrs d dwrs) wrs
                                 processState (s {decos = ndecos })
-        | otherwise        = return (wrs, Nothing)
 
         where
           ws        = map fst wrs
@@ -286,7 +283,7 @@ instance (DecorationStyle ds Window, Shrinker s) => LayoutModifier (Decoration d
                               updateDecos sh t (font s) ndwrs
                               return (dwrs_to_wrs ndwrs, Just (Decoration (I (Just (s {decos = ndwrs}))) sh t ds))
 
-    handleMess (Decoration (I (Just s@(DS {decos = dwrs}))) sh t ds) m
+    handleMess (Decoration (I (Just s@DS{decos = dwrs})) sh t ds) m
         | Just e <- fromMessage m                = do decorationEventHook ds s e
                                                       handleEvent sh t s e
                                                       return Nothing
@@ -305,9 +302,9 @@ instance (DecorationStyle ds Window, Shrinker s) => LayoutModifier (Decoration d
 handleEvent :: Shrinker s => s -> Theme -> DecorationState -> Event -> X ()
 handleEvent sh t (DS dwrs fs) e
     | PropertyEvent {ev_window = w} <- e
-    , Just i <- w `elemIndex`             (map (fst . fst) dwrs) = updateDeco sh t fs (dwrs !! i)
+    , Just i <- w `elemIndex` map (fst . fst) dwrs      = updateDeco sh t fs (dwrs !! i)
     | ExposeEvent   {ev_window = w} <- e
-    , Just i <- w `elemIndex` (catMaybes $ map (fst . snd) dwrs) = updateDeco sh t fs (dwrs !! i)
+    , Just i <- w `elemIndex` mapMaybe (fst . snd) dwrs = updateDeco sh t fs (dwrs !! i)
 handleEvent _ _ _ _ = return ()
 
 -- | Mouse focus and mouse drag are handled by the same function, this
@@ -323,7 +320,7 @@ handleMouseFocusDrag ds (DS dwrs _) ButtonEvent { ev_window     = ew
             distFromLeft = ex - fi dx
             distFromRight = fi dwh - (ex - fi dx)
         dealtWith <- decorationCatchClicksHook ds mainw (fi distFromLeft) (fi distFromRight)
-        when (not dealtWith) $
+        unless dealtWith $
             mouseDrag (\x y -> focus mainw >> decorationWhileDraggingHook ds ex ey (mainw, r) x y)
                         (decorationAfterDraggingHook ds (mainw, r) ew)
 handleMouseFocusDrag _ _ _ = return ()
@@ -378,17 +375,21 @@ createDecos t ds sc s wrs ((w,r):xs) = do
 createDecos _ _ _ _ _ [] = return []
 
 createDecoWindow :: Theme -> Rectangle -> X Window
-createDecoWindow t r = let mask = Just (exposureMask .|. buttonPressMask) in
-                       createNewWindow r mask (inactiveColor t) True
+createDecoWindow t r = do
+  let mask = Just (exposureMask .|. buttonPressMask)
+  w <- createNewWindow r mask (inactiveColor t) True
+  d <- asks display
+  io $ setClassHint d w (ClassHint "xmonad-decoration" "xmonad")
+  pure w
 
 showDecos :: [DecoWin] -> X ()
-showDecos = showWindows . catMaybes . map fst . filter (isJust . snd)
+showDecos = showWindows . mapMaybe fst . filter (isJust . snd)
 
 hideDecos :: [DecoWin] -> X ()
-hideDecos = hideWindows . catMaybes . map fst
+hideDecos = hideWindows . mapMaybe fst
 
 deleteDecos :: [DecoWin] -> X ()
-deleteDecos = deleteWindows . catMaybes . map fst
+deleteDecos = deleteWindows . mapMaybe fst
 
 updateDecos :: Shrinker s => s -> Theme -> XMonadFont -> [(OrigWin,DecoWin)] -> X ()
 updateDecos s t f = mapM_ $ updateDeco s t f
@@ -400,10 +401,10 @@ updateDeco sh t fs ((w,_),(Just dw,Just (Rectangle _ _ wh ht))) = do
   nw  <- getName w
   ur  <- readUrgents
   dpy <- asks display
-  let focusColor win ic ac uc = (maybe ic (\focusw -> case () of
-                                                       _ | focusw == win -> ac
-                                                         | win `elem` ur -> uc
-                                                         | otherwise     -> ic) . W.peek)
+  let focusColor win ic ac uc = maybe ic (\focusw -> case () of
+                                                      _ | focusw == win -> ac
+                                                        | win `elem` ur -> uc
+                                                        | otherwise     -> ic) . W.peek
                                 <$> gets windowset
   (bc,borderc,borderw,tc) <-
     focusColor w (inactiveColor t, inactiveBorderColor t, inactiveBorderWidth t, inactiveTextColor t)

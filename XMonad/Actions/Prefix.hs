@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -110,7 +110,7 @@ implementation is the following:
 -}
 
 data PrefixArgument = Raw Int | Numeric Int | None
-                      deriving (Typeable, Read, Show)
+                      deriving (Read, Show)
 instance ExtensionClass PrefixArgument where
   initialValue = None
   extensionType = PersistentExtension
@@ -140,7 +140,7 @@ usePrefixArgument prefix conf = conf {
 useDefaultPrefixArgument :: LayoutClass l Window
                          => XConfig l
                          -> XConfig l
-useDefaultPrefixArgument = usePrefixArgument (\_ -> (controlMask, xK_u))
+useDefaultPrefixArgument = usePrefixArgument (const (controlMask, xK_u))
 
 handlePrefixArg :: [(KeyMask, KeySym)] -> X ()
 handlePrefixArg events = do

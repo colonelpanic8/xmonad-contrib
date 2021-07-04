@@ -147,7 +147,7 @@ windowMap' WindowBringerConfig{ windowTitler = titler, windowFilter = include } 
     M.fromList . concat <$> mapM keyValuePairs (W.workspaces windowSet)
       where keyValuePairs ws = let wins = W.integrate' (W.stack ws)
                                in mapM (keyValuePair ws) $ filter include wins
-            keyValuePair ws w = flip (,) w <$> titler ws w
+            keyValuePair ws w = (, w) <$> titler ws w
 
 -- | Returns the window name as will be listed in dmenu.
 --   Tagged with the workspace ID, to guarantee uniqueness, and to let the user

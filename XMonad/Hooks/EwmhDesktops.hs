@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE PatternGuards #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -110,7 +110,7 @@ ewmhDesktopsLogHook = ewmhDesktopsLogHookCustom id
 -- Cached desktop names (e.g. @_NET_NUMBER_OF_DESKTOPS@ and
 -- @_NET_DESKTOP_NAMES@).
 newtype DesktopNames = DesktopNames [String]
-                     deriving (Eq)
+                     deriving Eq
 
 instance ExtensionClass DesktopNames where
     initialValue = DesktopNames []
@@ -118,7 +118,7 @@ instance ExtensionClass DesktopNames where
 -- |
 -- Cached client list (e.g. @_NET_CLIENT_LIST@).
 newtype ClientList = ClientList [Window]
-                   deriving (Eq)
+                   deriving Eq
 
 instance ExtensionClass ClientList where
     initialValue = ClientList [none]
@@ -126,7 +126,7 @@ instance ExtensionClass ClientList where
 -- |
 -- Cached current desktop (e.g. @_NET_CURRENT_DESKTOP@).
 newtype CurrentDesktop = CurrentDesktop Int
-                       deriving (Eq)
+                       deriving Eq
 
 instance ExtensionClass CurrentDesktop where
     initialValue = CurrentDesktop (-1)
@@ -134,7 +134,7 @@ instance ExtensionClass CurrentDesktop where
 -- |
 -- Cached window-desktop assignments (e.g. @_NET_CLIENT_LIST_STACKING@).
 newtype WindowDesktops = WindowDesktops (M.Map Window Int)
-                       deriving (Eq)
+                       deriving Eq
 
 instance ExtensionClass WindowDesktops where
     initialValue = WindowDesktops (M.singleton none (-1))
@@ -143,7 +143,7 @@ instance ExtensionClass WindowDesktops where
 -- The value of @_NET_ACTIVE_WINDOW@, cached to avoid unnecessary property
 -- updates.
 newtype ActiveWindow = ActiveWindow Window
-                     deriving (Eq)
+                     deriving Eq
 
 instance ExtensionClass ActiveWindow where
     initialValue = ActiveWindow (complement none)
@@ -177,7 +177,7 @@ ewmhDesktopsLogHookCustom t = withWindowSet $ \s -> do
 
     -- Remap the current workspace to handle any renames that f might be doing.
     let maybeCurrent' = W.tag <$> listToMaybe (t [W.workspace $ W.current s])
-        current = join (flip elemIndex (map W.tag ws) <$> maybeCurrent')
+        current = flip elemIndex (map W.tag ws) =<< maybeCurrent'
     whenChanged (CurrentDesktop $ fromMaybe 0 current) $
         mapM_ setCurrentDesktop current
 
@@ -216,7 +216,7 @@ ewmhDesktopsEventHookCustom f e = handle f e >> return (All True)
 -- this value in global state, because i use 'logHook' for handling activated
 -- windows and i need a way to tell 'logHook' what window is activated.
 newtype NetActivated    = NetActivated {netActivated :: Maybe Window}
-  deriving (Show, Typeable)
+  deriving Show
 instance ExtensionClass NetActivated where
     initialValue        = NetActivated Nothing
 
@@ -258,18 +258,18 @@ handle f ClientMessageEvent{ev_window = w, ev_message_type = mt, ev_data = d} =
         a_cw <- getAtom "_NET_CLOSE_WINDOW"
 
         if  | mt == a_cd, n : _ <- d, Just ww <- ws !? fi n ->
-                windows $ W.view (W.tag ww)
+                if W.currentTag s == W.tag ww then mempty else windows $ W.view (W.tag ww)
             | mt == a_cd ->
                 trace $ "Bad _NET_CURRENT_DESKTOP with data=" ++ show d
             | mt == a_d, n : _ <- d, Just ww <- ws !? fi n ->
-                windows $ W.shiftWin (W.tag ww) w
+                if W.findTag w s == Just (W.tag ww) then mempty else windows $ W.shiftWin (W.tag ww) w
             | mt == a_d ->
                 trace $ "Bad _NET_WM_DESKTOP with data=" ++ show d
             | mt == a_aw, 2 : _ <- d ->
                 -- when the request comes from a pager, honor it unconditionally
                 -- https://specifications.freedesktop.org/wm-spec/wm-spec-1.3.html#sourceindication
                 windows $ W.focusWindow w
-            | mt == a_aw -> do
+            | mt == a_aw, W.peek s /= Just w -> do
                 lh <- asks (logHook . config)
                 XS.put (NetActivated (Just w))
                 lh
@@ -306,6 +306,7 @@ fullscreenStartup = setFullscreenSupported
 -- Note this is not included in 'ewmh'.
 fullscreenEventHook :: Event -> X All
 fullscreenEventHook (ClientMessageEvent _ _ _ dpy win typ (action:dats)) = do
+  managed <- isClient win
   wmstate <- getAtom "_NET_WM_STATE"
   fullsc <- getAtom "_NET_WM_STATE_FULLSCREEN"
   wstate <- fromMaybe [] <$> getProp32 wmstate win
@@ -318,7 +319,7 @@ fullscreenEventHook (ClientMessageEvent _ _ _ dpy win typ (action:dats)) = do
       toggle = 2
       chWstate f = io $ changeProperty32 dpy win wmstate aTOM propModeReplace (f wstate)
 
-  when (typ == wmstate && fi fullsc `elem` dats) $ do
+  when (managed && typ == wmstate && fi fullsc `elem` dats) $ do
     when (action == add || (action == toggle && not isFull)) $ do
       chWstate (fi fullsc:)
       windows $ W.float win $ W.RationalRect 0 0 1 1
@@ -390,7 +391,7 @@ addSupported props = withDisplay $ \dpy -> do
     a <- getAtom "_NET_SUPPORTED"
     newSupportedList <- mapM (fmap fromIntegral . getAtom) props
     io $ do
-        supportedList <- fmap (join . maybeToList) $ getWindowProperty32 dpy a r
+        supportedList <- join . maybeToList <$> getWindowProperty32 dpy a r
         changeProperty32 dpy r a aTOM propModeReplace (nub $ newSupportedList ++ supportedList)
 
 setFullscreenSupported :: X ()

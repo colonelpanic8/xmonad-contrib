@@ -54,11 +54,10 @@ getZshCompl :: FilePath -> String -> IO [String]
 getZshCompl capture s
   | s == ""   = return []
   | otherwise = processCompls <$> runProcessWithInput capture [s] ""
-    where processCompls = map (\x -> (skipLastWord s ++ filter (/= '\r') x)) . lines
+    where processCompls = map (\x -> skipLastWord s ++ filter (/= '\r') x) . lines
 
 -- | Removes the argument description from the zsh completion
 stripZsh :: String -> String
 stripZsh "" = ""
 stripZsh (' ':'-':'-':' ':_) = ""
 stripZsh (x:xs) = x : stripZsh xs
-

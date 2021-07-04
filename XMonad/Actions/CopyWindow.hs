@@ -18,10 +18,10 @@ module XMonad.Actions.CopyWindow (
                                  -- * Usage
                                  -- $usage
                                  copy, copyToAll, copyWindow, runOrCopy
-                                 , killAllOtherCopies, kill1
+                                 , killAllOtherCopies, kill1, taggedWindows, copiesOfOn
                                  -- * Highlight workspaces containing copies in logHook
                                  -- $logHook
-                                 , wsContainingCopies
+                                 , wsContainingCopies, copiesPP
                                 ) where
 
 import XMonad
@@ -29,6 +29,7 @@ import Control.Arrow ((&&&))
 import qualified Data.List as L
 
 import XMonad.Actions.WindowGo
+import XMonad.Hooks.StatusBar.PP (PP(..))
 import qualified XMonad.StackSet as W
 
 -- $usage
@@ -76,18 +77,24 @@ import qualified XMonad.StackSet as W
 -- "XMonad.Doc.Extending#Editing_key_bindings".
 
 -- $logHook
--- To distinguish workspaces containing copies of the focused window use
--- something like:
 --
--- > sampleLogHook h = do
--- >    copies <- wsContainingCopies
--- >    let check ws | ws `elem` copies = pad . xmobarColor "red" "black" $ ws
--- >                 | otherwise = pad ws
--- >    dynamicLogWithPP myPP {ppHidden = check, ppOutput = hPutStrLn h}
--- >
--- > main = do
--- >    h <- spawnPipe "xmobar"
--- >    xmonad def { logHook = sampleLogHook h }
+-- To distinguish workspaces containing copies of the focused window, use 'copiesPP'.
+-- 'copiesPP' takes a pretty printer and makes it aware of copies of the focused window.
+-- It can be applied when creating a 'XMonad.Hooks.StatusBar.StatusBarConfig'.
+--
+-- A sample config looks like this:
+--
+-- > mySB = statusBarProp "xmobar" (copiesPP (pad . xmobarColor "red" "black") xmobarPP)
+-- > main = xmonad $ withEasySB mySB defToggleStrutsKey def
+
+-- | Take a pretty printer and make it aware of copies by using the provided function
+-- to show hidden workspaces that contain copies of the focused window.
+copiesPP :: (WorkspaceId -> String) -> PP -> X PP
+copiesPP wtoS pp = do
+    copies <- wsContainingCopies
+    let check ws | ws `elem` copies = wtoS ws
+                 | otherwise = ppHidden pp ws
+    return pp { ppHidden = check }
 
 -- | Copy the focused window to a workspace.
 copy :: (Eq s, Eq i, Eq a) => i -> W.StackSet i l a s sd -> W.StackSet i l a s sd
@@ -96,7 +103,7 @@ copy n s | Just w <- W.peek s = copyWindow w n s
 
 -- | Copy the focused window to all workspaces.
 copyToAll :: (Eq s, Eq i, Eq a) => W.StackSet i l a s sd -> W.StackSet i l a s sd
-copyToAll s = foldr copy s $ map W.tag (W.workspaces s)
+copyToAll s = foldr (copy . W.tag) s (W.workspaces s)
 
 -- | Copy an arbitrary window to a workspace.
 copyWindow :: (Eq a, Eq i, Eq s) => a -> i -> W.StackSet i l a s sd -> W.StackSet i l a s sd
@@ -142,9 +149,9 @@ killAllOtherCopies = do ss <- gets windowset
                                                    W.view (W.currentTag ss) .
                                                    delFromAllButCurrent w
     where
-      delFromAllButCurrent w ss = foldr ($) ss $
-                                  map (delWinFromWorkspace w . W.tag) $
-                                  W.hidden ss ++ map W.workspace (W.visible ss)
+      delFromAllButCurrent w ss = foldr (delWinFromWorkspace w . W.tag)
+                                  ss
+                                  (W.hidden ss ++ map W.workspace (W.visible ss))
       delWinFromWorkspace w wid = viewing wid $ W.modify Nothing (W.filter (/= w))
 
       viewing wis f ss = W.view (W.currentTag ss) $ f $ W.view wis ss
