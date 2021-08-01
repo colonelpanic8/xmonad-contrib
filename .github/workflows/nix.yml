@@ -8,6 +8,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     name: Nix Flake - Linux
+    permissions:
+      contents: read
     steps:
       - name: Install Nix
         uses: cachix/install-nix-action@v13
