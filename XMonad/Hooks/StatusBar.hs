@@ -285,7 +285,20 @@ withEasySB sb k conf = docks . withSB sb $ conf
     { layoutHook = avoidStruts (layoutHook conf)
     , keys       = (<>) <$> keys' <*> keys conf
     }
-  where keys' = (`M.singleton` sendMessage ToggleStruts) . k
+  where
+    k' conf' = case k conf' of
+        (0, 0) ->
+            -- This usually means the user passed 'def' for the keybinding
+            -- function, and is otherwise meaningless to harmful depending on
+            -- whether 383ffb7 has been applied to xmonad or not. So do what
+            -- they probably intend.
+            --
+            -- A user who wants no keybinding function should probably use
+            -- 'withSB' instead, especially since NoSymbol didn't do anything
+            -- sane before 383ffb7. ++bsa
+            defToggleStrutsKey conf'
+        key -> key
+    keys' = (`M.singleton` sendMessage ToggleStruts) . k'
 
 -- | Default @mod-b@ key binding for 'withEasySB'
 defToggleStrutsKey :: XConfig t -> (KeyMask, KeySym)

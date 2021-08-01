@@ -48,6 +48,10 @@
       `activateLogHook` to your `logHook`. Also, module `X.H.Focus` provides
       additional combinators.
 
+    - Ordering of windows that are set to `_NET_CLIENT_LIST` and `_NET_CLIENT_LIST_STACKING`
+      was changed to be closer to the spec. From now these two lists will have
+      differently sorted windows.
+
   * All modules still exporting a `defaultFoo` constructor
 
     - All of these were now removed. You can use the re-exported `def` from
@@ -118,8 +122,18 @@
     - Deprecated `EmptyWS`, `HiddenWS`, `NonEmptyWS`, `HiddenNonEmptyWS`,
       `HiddenEmptyWS`, `AnyWS` and `WSTagGroup`.
 
+  - `XMonad.Actions.GridSelect`
+
+    - `colorRangeFromClassName` now uses different hash function,
+      so colors of inactive window tiles will be different (but still inside
+      the provided color range).
 
 ### New Modules
+
+  * `XMonad.Hooks.TaffybarPagerHints`
+
+    Add a module that exports information about XMonads internal state that is
+    not available through EWMH that is used by the taffybar status bar.
 
   * `XMonad.Hooks.StatusBar.PP`
 
@@ -189,11 +203,12 @@
 
   * `XMonad.Hooks.DynamicIcons`
 
-    Added Dynamic Strings as `dynamicLogIconWithPP` based on a Workspaces Windows
+    Dynamically augment workspace names logged to a status bar via DynamicLog
+    based on the contents (windows) of the workspace.
 
   * `XMonad.Hooks.WindowSwallowing`
 
-    A handleEventHook that implements window swallowing:
+    HandleEventHooks that implement window swallowing or sublayouting:
     Hide parent windows like terminals when opening other programs (like image viewers) from within them,
     restoring them once the child application closes.
 
@@ -573,6 +588,9 @@
     - Fixed handling of floating window borders in multihead setups that was
       broken since 0.14.
 
+    - Added `OnlyFloat` constructor to `Ambiguity` to unconditionally
+      remove all borders on floating windows.
+
   * `XMonad.Hooks.UrgencyHook`
 
     - It's now possible to clear urgency of selected windows only using the
@@ -659,6 +677,9 @@
     - Added `ingoringWSs` as a `WSType` predicate to skip workspaces having a
       tag in a given list.
 
+  - `XMonad.Actions.DynamicWorkspaceOrder`
+
+    - Added `swapWithCurrent` and `swapOrder` to the list of exported names.
 
 ## 0.16
 
