@@ -22,4 +22,4 @@ jobs:
       - name: Clone project
         uses: actions/checkout@v2
       - name: Build
-        run: nix develop -c 'cabal new-build'
+        run: nix develop -c cabal v2-build -j
