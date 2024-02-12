@@ -1,5 +1,5 @@
 name:               xmonad-contrib
-version:            0.17.1.9
+version:            0.18.0.9
 -- ^ also update cpp-options: -DXMONAD_CONTRIB_VERSION_*
 
 homepage:           https://xmonad.org/
@@ -38,7 +38,7 @@ cabal-version:      1.12
 build-type:         Simple
 bug-reports:        https://github.com/xmonad/xmonad-contrib/issues
 
-tested-with:        GHC == 8.6.5 || == 8.8.4 || == 8.10.7 || == 9.0.2 || == 9.2.8 || == 9.4.8 || == 9.6.3 || == 9.8.1
+tested-with:        GHC == 8.6.5 || == 8.8.4 || == 8.10.7 || == 9.0.2 || == 9.2.8 || == 9.4.8 || == 9.6.4 || == 9.8.1
 
 source-repository head
   type:     git
@@ -65,14 +65,14 @@ library
                    mtl >= 1 && < 3,
                    unix,
                    X11 >= 1.10 && < 1.11,
-                   xmonad >= 0.16.99999 && < 0.18,
+                   xmonad >= 0.16.99999 && < 0.19,
                    utf8-string,
                    deepseq
     default-language: Haskell2010
 
     cpp-options:   -DXMONAD_CONTRIB_VERSION_MAJOR=0
-                   -DXMONAD_CONTRIB_VERSION_MINOR=17
-                   -DXMONAD_CONTRIB_VERSION_PATCH=1
+                   -DXMONAD_CONTRIB_VERSION_MINOR=18
+                   -DXMONAD_CONTRIB_VERSION_PATCH=0
     ghc-options:   -Wall -Wno-unused-do-bind
 
     if flag(pedantic)
@@ -239,6 +239,15 @@ library
                         XMonad.Layout.ConditionalLayout
                         XMonad.Layout.Cross
                         XMonad.Layout.Decoration
+                        XMonad.Layout.DecorationEx
+                        XMonad.Layout.DecorationEx.Common
+                        XMonad.Layout.DecorationEx.Engine
+                        XMonad.Layout.DecorationEx.Geometry
+                        XMonad.Layout.DecorationEx.Widgets
+                        XMonad.Layout.DecorationEx.LayoutModifier
+                        XMonad.Layout.DecorationEx.TextEngine
+                        XMonad.Layout.DecorationEx.DwmGeometry
+                        XMonad.Layout.DecorationEx.TabbedGeometry
                         XMonad.Layout.DecorationAddons
                         XMonad.Layout.DecorationMadness
                         XMonad.Layout.Dishes
@@ -480,7 +489,7 @@ test-suite tests
                , unix
                , utf8-string
                , deepseq
-               , xmonad >= 0.16.9999 && < 0.18
+               , xmonad >= 0.16.9999 && < 0.19
   cpp-options: -DTESTING
   ghc-options: -Wall -Wno-unused-do-bind
   default-language: Haskell2010

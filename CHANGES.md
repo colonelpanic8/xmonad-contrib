@@ -4,6 +4,18 @@
 
 ### Breaking Changes
 
+### New Modules
+
+### Bug Fixes and Minor Changes
+
+  * Fix build-with-cabal.sh when XDG_CONFIG_HOME is defined.
+
+### Other changes
+
+## 0.18.0 (February 3, 20
+
+### Breaking Changes
+
   * Deprecated `XMonad.Layout.Cross` due to bitrot; refer to
     `XMonad.Layout.Circle` and `XMonad.Layout.ThreeColumns` for
     alternatives.
@@ -144,6 +156,12 @@
 
     - A new window layout, similar to X.L.Circle, but with more
       possibilities for customisation.
+
+  * `XMonad.Layout.DecorationEx`:
+
+    - A new, more extensible, mechanism for window decorations, and some
+      standard types of decorations, including usual bar on top of window,
+      tabbed decorations and dwm-like decorations.
 
 ### Bug Fixes and Minor Changes
 
@@ -300,8 +318,6 @@
 
     - Added `zipperFocusedAtFirstOf` to differentiate two lists into a
       zipper.
-
-### Other changes
 
 ## 0.17.1 (September 3, 2022)
 
