@@ -419,6 +419,7 @@ infixl 4 `removeMouseBindings`
 -- > <XF86_Next_VMode>
 -- > <XF86_Prev_VMode>
 -- > <XF86Bluetooth>
+-- > <XF86WLAN>
 
 mkKeymap :: XConfig l -> [(String, X ())] -> M.Map (KeyMask, KeySym) (X ())
 mkKeymap c = M.fromList . mkSubmaps . readKeymap c
@@ -552,8 +553,8 @@ doKeymapCheck :: XConfig l -> [(String,a)] -> ([String], [String])
 doKeymapCheck conf km = (bad,dups)
   where ks = map ((readKeySequence conf &&& id) . fst) km
         bad = nub . map snd . filter (isNothing . fst) $ ks
-        dups = map (snd . NE.head)
-             . mapMaybe nonEmpty
+        dups = map (snd . NE.head . notEmpty)
+             . filter ((>1) . length)
              . groupBy ((==) `on` fst)
              . sortBy (comparing fst)
              . map (first fromJust)
